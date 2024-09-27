@@ -1,0 +1,33 @@
+package fr.focusflow.security;
+
+import fr.focusflow.Models.User;
+import fr.focusflow.services.UserService;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+
+@Component
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserService userService;
+
+    public CustomUserDetailsService(UserService userService) {
+        this.userService = userService;
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+
+        // Récupérer le user
+        Optional<User> optionalUser = userService.findByEmail(email);
+        return optionalUser.map(user -> org.springframework.security.core.userdetails.User.builder()
+                .username(user.getEmail())
+                .password(user.getPassword())
+                .roles(user.getRole() != null ? user.getRole().getName() : "USER")
+                .build()).orElse(null);
+
+    }
+}
