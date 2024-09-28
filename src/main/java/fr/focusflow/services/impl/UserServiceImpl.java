@@ -3,7 +3,6 @@ package fr.focusflow.services.impl;
 import fr.focusflow.Models.User;
 import fr.focusflow.repositories.UserRepository;
 import fr.focusflow.services.UserService;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -12,17 +11,13 @@ import java.util.Optional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
 
-
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserServiceImpl(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
-    public User save(String email, String password) {
-        User newUser = new User(email, passwordEncoder.encode(password));
+    public User save(User newUser) {
         return userRepository.save(newUser);
     }
 

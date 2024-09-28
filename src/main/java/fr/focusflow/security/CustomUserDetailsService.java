@@ -1,5 +1,6 @@
 package fr.focusflow.security;
 
+import fr.focusflow.Models.Role;
 import fr.focusflow.Models.User;
 import fr.focusflow.services.UserService;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -8,6 +9,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 public class CustomUserDetailsService implements UserDetailsService {
@@ -26,8 +28,8 @@ public class CustomUserDetailsService implements UserDetailsService {
         return optionalUser.map(user -> org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
                 .password(user.getPassword())
-                .roles(user.getRole() != null ? user.getRole().getName() : "USER")
-                .build()).orElse(null);
+                .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.joining()))
+                .build()).orElseThrow();
 
     }
 }

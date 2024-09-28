@@ -6,7 +6,7 @@ import java.util.Optional;
 
 public interface UserService {
 
-    User save(String email, String password);
+    User save(User newUser);
 
     boolean existByEmail(String email);
 

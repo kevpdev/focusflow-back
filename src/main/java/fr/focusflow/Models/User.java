@@ -3,6 +3,9 @@ package fr.focusflow.Models;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "USER")
 @Data
@@ -19,17 +22,12 @@ public class User {
 
     private String password;
 
-    @OneToOne
-    private Role role;
-
-    public User() {
-    }
-
-    ;
-
-
-    public User(String email, String password) {
-        this.email = email;
-        this.password = password;
-    }
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "USERS_ROLES",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
+    
 }
