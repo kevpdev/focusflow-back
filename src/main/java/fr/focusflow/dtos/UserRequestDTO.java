@@ -1,11 +1,4 @@
 package fr.focusflow.dtos;
 
-import lombok.Data;
-
-@Data
-public class UserRequestDTO {
-
-    String email;
-    String password;
-
+public record UserRequestDTO(String email, String password) {
 }

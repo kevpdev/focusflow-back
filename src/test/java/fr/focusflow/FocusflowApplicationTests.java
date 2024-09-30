@@ -9,6 +9,8 @@ import fr.focusflow.services.UserService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,6 +23,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Optional;
 
@@ -37,24 +40,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class FocusflowApplicationTests {
 
+    private final Logger logger = LoggerFactory.getLogger(FocusflowApplicationTests.class);
     @Autowired
     private MockMvc mockMvc;
-
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
-
     @Autowired
     private UserDetailsService userDetailsService;
-
     @MockBean
     private UserService userService;
-
     @MockBean
     private RoleService roleService;
-
     @Autowired
     private PasswordEncoder passwordEncoder;
-
     @MockBean
     private AuthenticationManager authenticationManager;
 
@@ -73,12 +71,20 @@ class FocusflowApplicationTests {
         // Requete JSON
         String userLoginJson = "{\"email\": \"" + email + "\", \"password\": \"123456\"}";
 
+        logger.info("Mocked user in database : " + email);
+
         //Assert
-        mockMvc.perform(post("/api/login")
+        MvcResult mvcResult = mockMvc.perform(post("/api/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(userLoginJson))
                 .andExpect(status().isOk())  // S'assurer que le statut est 200 OK
-                .andExpect(jsonPath("$.token").isNotEmpty());  // Vérifier que le token est présent dans la réponse
+                .andExpect(jsonPath("$.token").isNotEmpty()) // Vérifier que le token est présent dans la réponse
+                .andReturn();
+
+
+        String responsBody = mvcResult.getResponse().getContentAsString();
+        logger.info("Login successful, received response : " + responsBody);
+
     }
 
     @Test
@@ -89,10 +95,14 @@ class FocusflowApplicationTests {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Invalid email or password"));
 
-        mockMvc.perform(post("/api/login")
+        MvcResult mvcResult = mockMvc.perform(post("/api/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidLoginJson))
-                .andExpect(status().isUnauthorized());  // S'attendre à une erreur 401 Unauthorized
+                .andExpect(status().isUnauthorized()) // S'attendre à une erreur 401 Unauthorized
+                .andReturn();
+
+        String responsBody = mvcResult.getResponse().getContentAsString();
+        logger.info("Login unauthorized, received response : " + responsBody);
     }
 
     @Test
@@ -108,12 +118,18 @@ class FocusflowApplicationTests {
         role.setName(ERole.USER.name());
         when(roleService.findByName(ERole.USER.name())).thenReturn(Optional.of(role));
 
+        logger.info("Mocked role find by name : " + role.getName());
+
         // Effectuer la requête POST
-        mockMvc.perform(post("/api/signup")
+        MvcResult mvcResult = mockMvc.perform(post("/api/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(userRegisterJson))
                 .andExpect(status().isCreated())  // S'assurer que le statut est 201 Created
                 .andReturn();
+
+        String responsBody = mvcResult.getResponse().getContentAsString();
+        logger.info("Signup successful, received response : " + responsBody);
+
 
         // Capture des arguments passés à userService.save
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -121,6 +137,9 @@ class FocusflowApplicationTests {
 
         // Récupérer l'utilisateur capturé
         User capturedUser = userCaptor.getValue();
+
+
+        logger.info("captured user : " + capturedUser.getEmail());
 
         // Vérifier que l'email est correct
         Assertions.assertEquals("lulu@gmail.com", capturedUser.getEmail());
@@ -153,12 +172,18 @@ class FocusflowApplicationTests {
 
         when(userService.findByEmail(email)).thenReturn(Optional.of(mockedUser));
 
+        logger.info("Mocked user in database : " + email);
+
         // Générer un token JWT valide pour cet utilisateur
         String token = jwtTokenProvider.generateToken(email);
 
-        mockMvc.perform(get("/api/protected")
+        MvcResult mvcResult = mockMvc.perform(get("/api/protected")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String responsBody = mvcResult.getResponse().getContentAsString();
+        logger.info("protected endpoint access successful, received response : " + responsBody);
     }
 
 //	@Test

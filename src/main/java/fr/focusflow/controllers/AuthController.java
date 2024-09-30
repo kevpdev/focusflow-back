@@ -42,12 +42,12 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody UserRequestDTO userRequestDTO) {
         // Test connexion
         Authentication authentication = authenticationManager
-                .authenticate(new UsernamePasswordAuthenticationToken(userRequestDTO.getEmail(), userRequestDTO.getPassword()));
+                .authenticate(new UsernamePasswordAuthenticationToken(userRequestDTO.email(), userRequestDTO.password()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         // Token
-        String token = jwtTokenProvider.generateToken(userRequestDTO.getEmail());
+        String token = jwtTokenProvider.generateToken(userRequestDTO.email());
 
         return ResponseEntity.ok(new UserResponseDTO(token));
 
@@ -56,7 +56,7 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody UserRequestDTO userRequestDTO) throws EmailAlreadyExistsException, RoleNotFoundException {
 
-        if (userService.existByEmail(userRequestDTO.getEmail())) {
+        if (userService.existByEmail(userRequestDTO.email())) {
             throw new EmailAlreadyExistsException("Email already exist !");
         }
 
@@ -64,8 +64,8 @@ public class AuthController {
                 .orElseThrow(() -> new RoleNotFoundException("Role not found !"));
 
         User newUser = new User();
-        newUser.setEmail(userRequestDTO.getEmail());
-        newUser.setPassword(passwordEncoder.encode(userRequestDTO.getPassword()));
+        newUser.setEmail(userRequestDTO.email());
+        newUser.setPassword(passwordEncoder.encode(userRequestDTO.password()));
         newUser.getRoles().add(role);
 
         userService.save(newUser);
