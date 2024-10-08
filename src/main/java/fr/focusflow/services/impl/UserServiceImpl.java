@@ -1,6 +1,6 @@
 package fr.focusflow.services.impl;
 
-import fr.focusflow.Models.User;
+import fr.focusflow.models.User;
 import fr.focusflow.repositories.UserRepository;
 import fr.focusflow.services.UserService;
 import org.springframework.stereotype.Service;
@@ -23,7 +23,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean existByEmail(String email) {
-        return userRepository.existByEmail(email);
+        return userRepository.existsByEmail(email);
     }
 
     @Override

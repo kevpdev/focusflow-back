@@ -1,8 +1,12 @@
 package fr.focusflow.security;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -12,7 +16,8 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     // Clé secrète encodée en Base64 (a stoker plus tard en variable d'environnement)
-    private final String jwtSecret = "G8afkD4RdHn3Pso9K3N1Sm7v5XHFs1QPUf8rvOmlGFHjF7GkJrZeR7bLxXBtZZtSUKXJwJ6gy9sAJsfoOlOXRg==";
+    @Value("${jwt.secret}")
+    private String jwtSecret;
 
     // Générer la clé de signature à partir de la clé encodée en Base64
     private Key getSigningKey() {

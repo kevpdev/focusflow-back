@@ -1,15 +1,16 @@
 package fr.focusflow.controllers;
 
-import fr.focusflow.Models.ERole;
-import fr.focusflow.Models.Role;
-import fr.focusflow.Models.User;
 import fr.focusflow.dtos.UserRequestDTO;
 import fr.focusflow.dtos.UserResponseDTO;
 import fr.focusflow.exceptions.EmailAlreadyExistsException;
 import fr.focusflow.exceptions.RoleNotFoundException;
+import fr.focusflow.models.ERole;
+import fr.focusflow.models.Role;
+import fr.focusflow.models.User;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.services.RoleService;
 import fr.focusflow.services.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api")
 public class AuthController {
 
+    private final static String EMAIL_ALREADY_EXISTS_ERROR_MESSAGE = "Email already exist !";
+    private final static String ROLE_NOT_FOUND_ERROR_MESSAGE = "Role not found !";
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
@@ -37,6 +40,7 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
         this.roleService = roleService;
     }
+
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UserRequestDTO userRequestDTO) {
@@ -54,25 +58,26 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody UserRequestDTO userRequestDTO) throws EmailAlreadyExistsException, RoleNotFoundException {
+    public ResponseEntity<?> signup(@Valid @RequestBody UserRequestDTO userRequestDTO) throws EmailAlreadyExistsException, RoleNotFoundException {
 
         if (userService.existByEmail(userRequestDTO.email())) {
-            throw new EmailAlreadyExistsException("Email already exist !");
+            throw new EmailAlreadyExistsException(EMAIL_ALREADY_EXISTS_ERROR_MESSAGE);
         }
 
         Role role = roleService.findByName(ERole.USER.name())
-                .orElseThrow(() -> new RoleNotFoundException("Role not found !"));
+                .orElseThrow(() -> new RoleNotFoundException(ROLE_NOT_FOUND_ERROR_MESSAGE));
 
         User newUser = new User();
         newUser.setEmail(userRequestDTO.email());
         newUser.setPassword(passwordEncoder.encode(userRequestDTO.password()));
+        newUser.setUsername(userRequestDTO.username());
         newUser.getRoles().add(role);
 
         userService.save(newUser);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(newUser);
+        String token = jwtTokenProvider.generateToken(newUser.getEmail());
 
-
+        return ResponseEntity.status(HttpStatus.CREATED).body(new UserResponseDTO(token));
     }
 
     @GetMapping("/protected")

@@ -1,6 +1,6 @@
 package fr.focusflow.services.impl;
 
-import fr.focusflow.Models.Role;
+import fr.focusflow.models.Role;
 import fr.focusflow.repositories.RoleRepository;
 import fr.focusflow.services.RoleService;
 import org.springframework.stereotype.Service;

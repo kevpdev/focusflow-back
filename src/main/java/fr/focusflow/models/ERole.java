@@ -1,4 +1,4 @@
-package fr.focusflow.Models;
+package fr.focusflow.models;
 
 public enum ERole {
     USER,
