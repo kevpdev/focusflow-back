@@ -1,6 +1,6 @@
 package fr.focusflow.services.impl;
 
-import fr.focusflow.models.User;
+import fr.focusflow.entities.User;
 import fr.focusflow.repositories.UserRepository;
 import fr.focusflow.services.UserService;
 import org.springframework.stereotype.Service;

@@ -1,4 +1,4 @@
-package fr.focusflow.models;
+package fr.focusflow.entities;
 
 public enum ETaskStatus {
     PENDING,

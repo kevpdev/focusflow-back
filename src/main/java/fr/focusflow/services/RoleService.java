@@ -1,6 +1,6 @@
 package fr.focusflow.services;
 
-import fr.focusflow.models.Role;
+import fr.focusflow.entities.Role;
 
 import java.util.Optional;
 

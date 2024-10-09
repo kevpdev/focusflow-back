@@ -2,11 +2,11 @@ package fr.focusflow.controllers;
 
 import fr.focusflow.dtos.UserRequestDTO;
 import fr.focusflow.dtos.UserResponseDTO;
+import fr.focusflow.entities.ERole;
+import fr.focusflow.entities.Role;
+import fr.focusflow.entities.User;
 import fr.focusflow.exceptions.EmailAlreadyExistsException;
 import fr.focusflow.exceptions.RoleNotFoundException;
-import fr.focusflow.models.ERole;
-import fr.focusflow.models.Role;
-import fr.focusflow.models.User;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.services.RoleService;
 import fr.focusflow.services.UserService;

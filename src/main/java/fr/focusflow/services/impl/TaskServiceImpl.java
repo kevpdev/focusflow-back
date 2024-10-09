@@ -1,9 +1,11 @@
 package fr.focusflow.services.impl;
 
-import fr.focusflow.models.Task;
+import fr.focusflow.entities.Task;
 import fr.focusflow.repositories.TaskRepository;
 import fr.focusflow.services.TaskService;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class TaskServiceImpl implements TaskService {
@@ -18,5 +20,10 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public Task save(Task newTask) {
         return taskRepository.save(newTask);
+    }
+
+    @Override
+    public List<Task> findAll() {
+        return taskRepository.findAll();
     }
 }

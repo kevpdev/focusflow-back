@@ -1,6 +1,7 @@
 package fr.focusflow.services.impl;
 
-import fr.focusflow.models.User;
+import fr.focusflow.TestDataFactory;
+import fr.focusflow.entities.User;
 import fr.focusflow.repositories.UserRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,9 +33,7 @@ class UserServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        this.user = User.builder()
-                .id(1)
-                .email("toto@gmail.com").build();
+        this.user = TestDataFactory.createUser();
     }
 
     @Test

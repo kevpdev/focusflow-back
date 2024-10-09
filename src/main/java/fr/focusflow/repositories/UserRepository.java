@@ -1,6 +1,6 @@
 package fr.focusflow.repositories;
 
-import fr.focusflow.models.User;
+import fr.focusflow.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

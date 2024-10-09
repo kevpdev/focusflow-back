@@ -1,8 +1,8 @@
 package fr.focusflow.controllers;
 
-import fr.focusflow.models.ERole;
-import fr.focusflow.models.Role;
-import fr.focusflow.models.User;
+import fr.focusflow.entities.ERole;
+import fr.focusflow.entities.Role;
+import fr.focusflow.entities.User;
 import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.security.SecurityConfig;

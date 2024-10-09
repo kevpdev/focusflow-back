@@ -1,6 +1,6 @@
 package fr.focusflow.services;
 
-import fr.focusflow.models.User;
+import fr.focusflow.entities.User;
 
 import java.util.Optional;
 

@@ -1,7 +1,7 @@
 package fr.focusflow.security;
 
-import fr.focusflow.models.Role;
-import fr.focusflow.models.User;
+import fr.focusflow.entities.Role;
+import fr.focusflow.entities.User;
 import fr.focusflow.services.UserService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

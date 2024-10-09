@@ -1,7 +1,7 @@
 package fr.focusflow.services.impl;
 
-import fr.focusflow.models.ERole;
-import fr.focusflow.models.Role;
+import fr.focusflow.entities.ERole;
+import fr.focusflow.entities.Role;
 import fr.focusflow.repositories.RoleRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
