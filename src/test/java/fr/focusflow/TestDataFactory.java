@@ -1,7 +1,13 @@
 package fr.focusflow;
 
 import fr.focusflow.entities.*;
+import fr.focusflow.security.CustomUserDetails;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -65,5 +71,18 @@ public class TestDataFactory {
                 .user(user)
                 .build();
         return List.of(task1, task2);
+    }
+
+
+    /**
+     * Simule un Security Contexte pour les donnees de session
+     */
+    public static void setUpSecurityContext() {
+        User user = createUser();
+        List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        CustomUserDetails customUserDetails = new CustomUserDetails(user.getId(), user.getEmail(), "password", authorities);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities())
+        );
     }
 }

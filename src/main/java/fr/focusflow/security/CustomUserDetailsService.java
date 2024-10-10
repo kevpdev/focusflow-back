@@ -1,8 +1,8 @@
 package fr.focusflow.security;
 
-import fr.focusflow.entities.Role;
 import fr.focusflow.entities.User;
 import fr.focusflow.services.UserService;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,11 +25,14 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         // Récupérer le user
         Optional<User> optionalUser = userService.findByEmail(email);
-        return optionalUser.map(user -> org.springframework.security.core.userdetails.User.builder()
-                .username(user.getEmail())
-                .password(user.getPassword())
-                .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.joining()))
-                .build()).orElseThrow();
+        return optionalUser.map(user -> new CustomUserDetails(
+                user.getId(),
+                user.getEmail(),
+                user.getPassword(),
+                user.getRoles().stream()
+                        .map(role -> new SimpleGrantedAuthority(role.getName()))
+                        .collect(Collectors.toList())
+        )).orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
     }
 }

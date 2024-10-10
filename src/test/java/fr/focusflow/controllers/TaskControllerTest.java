@@ -19,8 +19,12 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+import java.util.Optional;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -45,6 +49,7 @@ class TaskControllerTest {
 
     private Task taskRequestBody;
     private Task taskResponseBody;
+    private String authorizationHeader;
 
 
     @BeforeEach
@@ -60,14 +65,19 @@ class TaskControllerTest {
                 .user(taskRequestBody.getUser()) // Attention si l'utilisateur est mutable
                 .dueDate(taskRequestBody.getDueDate())
                 .build();
+
+        authorizationHeader = "Bearer eykds5fsdg55sf5sdf5sf5sdf5sf_fake_token";
+
+        // initialisatio context spring pour le bean authentication
+        TestDataFactory.setUpSecurityContext();
+
+
     }
+
 
     @Test
     @WithMockUser(username = "toto", roles = {"USER"})
     public void shouldReturnSavedNewTask() throws Exception {
-
-        // Simuler un token valide
-        String token = "fake-token";
 
         // Simuler la réponse du service
         when(taskService.save(any(Task.class))).thenReturn(taskResponseBody);
@@ -78,7 +88,7 @@ class TaskControllerTest {
         mockMvc.perform(post("/api/tasks")
                         .content(jsonRequestBody)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + token))
+                        .header("Authorization", "Bearer " + authorizationHeader))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.title").value(taskResponseBody.getTitle()))
                 .andExpect(jsonPath("$.description").value(taskResponseBody.getDescription()))
@@ -87,6 +97,47 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.user.username").value("toto"))
                 .andExpect(jsonPath("$.user.email").value("toto@gmail.com"))
                 .andExpect(jsonPath("$.user.roles[0].name").value("USER"));
+
+    }
+
+    @Test
+    @WithMockUser(username = "toto", roles = {"USER"})
+    public void shouldReturnTaskListByUserId() throws Exception {
+
+        List<Task> userTaskList = TestDataFactory.createTaskList();
+
+        when(taskService.getUserTasks(any(Long.class))).thenReturn(userTaskList);
+
+        mockMvc.perform(get("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
+    @WithMockUser(username = "toto", roles = {"USER"})
+    public void shouldReturnTaskById() throws Exception {
+
+        Task task = TestDataFactory.createTask(2L, TestDataFactory.createUser());
+        when(taskService.getTaskById(any(Long.class))).thenReturn(Optional.of(task));
+
+        mockMvc.perform(get("/api/tasks/{id}", 2L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("2"));
+
+    }
+
+    @Test
+    @WithMockUser(username = "toto", roles = {"USER"})
+    public void shouldReturn404ErrorWhenTaskNotFound() throws Exception {
+
+        mockMvc.perform(get("/api/tasks/{id}", 2L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorizationHeader))
+                .andExpect(status().isNotFound());
 
     }
 

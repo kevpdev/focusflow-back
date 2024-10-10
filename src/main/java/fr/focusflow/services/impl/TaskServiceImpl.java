@@ -6,6 +6,7 @@ import fr.focusflow.services.TaskService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TaskServiceImpl implements TaskService {
@@ -25,5 +26,15 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public List<Task> findAll() {
         return taskRepository.findAll();
+    }
+
+    @Override
+    public List<Task> getUserTasks(Long userId) {
+        return taskRepository.findByUserId(userId);
+    }
+
+    @Override
+    public Optional<Task> getTaskById(Long taskId) {
+        return taskRepository.findById(taskId);
     }
 }
