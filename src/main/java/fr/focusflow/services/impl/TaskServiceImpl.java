@@ -1,6 +1,8 @@
 package fr.focusflow.services.impl;
 
 import fr.focusflow.entities.Task;
+import fr.focusflow.exceptions.TaskNotFoundException;
+import fr.focusflow.mappers.TaskMapper;
 import fr.focusflow.repositories.TaskRepository;
 import fr.focusflow.services.TaskService;
 import org.springframework.stereotype.Service;
@@ -14,8 +16,11 @@ public class TaskServiceImpl implements TaskService {
 
     private final TaskRepository taskRepository;
 
-    public TaskServiceImpl(TaskRepository taskRepository) {
+    private final TaskMapper taskMapper;
+
+    public TaskServiceImpl(TaskRepository taskRepository, TaskMapper taskMapper) {
         this.taskRepository = taskRepository;
+        this.taskMapper = taskMapper;
     }
 
     @Override
@@ -37,4 +42,21 @@ public class TaskServiceImpl implements TaskService {
     public Optional<Task> getTaskById(Long taskId) {
         return taskRepository.findById(taskId);
     }
+
+    @Override
+    public Task updateTask(Long id, Task task) throws TaskNotFoundException {
+
+        Task existingTask = taskRepository.findById(id).orElseThrow(() -> new TaskNotFoundException("Task Not found !"));
+
+        taskMapper.updateTask(task, existingTask);
+
+        return taskRepository.save(existingTask);
+    }
+
+    @Override
+    public void deleteTask(Long id) {
+        taskRepository.deleteById(id);
+    }
+
+
 }

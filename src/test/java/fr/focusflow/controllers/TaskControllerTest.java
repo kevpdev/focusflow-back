@@ -9,6 +9,7 @@ import fr.focusflow.security.SecurityConfig;
 import fr.focusflow.services.TaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,8 +25,7 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(TaskController.class)
 class TaskControllerTest {
 
+    private static final String API_TASKS_ID = "/api/tasks/{id}";
     private Logger logger = LoggerFactory.getLogger(TaskControllerTest.class);
 
     @Autowired
@@ -122,7 +123,7 @@ class TaskControllerTest {
         Task task = TestDataFactory.createTask(2L, TestDataFactory.createUser());
         when(taskService.getTaskById(any(Long.class))).thenReturn(Optional.of(task));
 
-        mockMvc.perform(get("/api/tasks/{id}", 2L)
+        mockMvc.perform(get(API_TASKS_ID, 2L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
@@ -134,10 +135,42 @@ class TaskControllerTest {
     @WithMockUser(username = "toto", roles = {"USER"})
     public void shouldReturn404ErrorWhenTaskNotFound() throws Exception {
 
-        mockMvc.perform(get("/api/tasks/{id}", 2L)
+        mockMvc.perform(get(API_TASKS_ID, 2L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isNotFound());
+
+    }
+
+    @Test
+    public void shouldReturnUpdatedTask() throws Exception {
+
+        Task task = TestDataFactory.createTask(1L, TestDataFactory.createUser());
+        task.setTitle("Ranger la chambre");
+        task.setDescription("Ranger la chambre avant le soir");
+
+        when(taskService.updateTask(any(Long.class), any(Task.class))).thenReturn(task);
+
+        mockMvc.perform(put(API_TASKS_ID, 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorizationHeader)
+                        .content(TestUtil.objectToJsonMapper(task)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("1"))
+                .andExpect(jsonPath("$.title").value("Ranger la chambre"))
+                .andExpect(jsonPath("$.description").value("Ranger la chambre avant le soir"));
+
+    }
+
+    @Test
+    public void shouldDeleteTask() throws Exception {
+
+        Mockito.doNothing().when(taskService).deleteTask(any(Long.class));
+
+        mockMvc.perform(delete(API_TASKS_ID, 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorizationHeader))
+                .andExpect(status().isOk());
 
     }
 
