@@ -36,6 +36,12 @@ public class TaskServiceImpl implements TaskService {
         return taskRepository.findAll();
     }
 
+    /**
+     * Get all user's tasks
+     *
+     * @param userId
+     * @return Task object List
+     */
     @Override
     public List<Task> getUserTasks(Long userId) {
         return taskRepository.findByUserId(userId);

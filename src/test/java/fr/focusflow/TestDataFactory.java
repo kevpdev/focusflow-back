@@ -7,12 +7,21 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Classe de jeu de données pour les TU/TI
+ */
 public class TestDataFactory {
 
+    /**
+     * Création d'un utilisateur avec le rôle user
+     *
+     * @return un objet utilisateur
+     */
     public static User createUser() {
         return User.builder()
                 .id(2L)
@@ -25,7 +34,11 @@ public class TestDataFactory {
                 .build();
     }
 
-
+    /**
+     * Création d'un utilisateur avec le role admin
+     *
+     * @return un objet User
+     */
     public static User createAdminUser() {
         return User.builder()
                 .id(1L)
@@ -38,6 +51,13 @@ public class TestDataFactory {
                 .build();
     }
 
+    /**
+     * Création d'une tâche
+     *
+     * @param id
+     * @param user
+     * @return un objet Task
+     */
     public static Task createTask(Long id, User user) {
         return Task.builder()
                 .id(id)
@@ -49,6 +69,11 @@ public class TestDataFactory {
                 .build();
     }
 
+    /**
+     * Creation d'une bodyRequest pour une tâche
+     *
+     * @return un objet Task
+     */
     public static Task createRequestBodyTask() {
         return Task.builder()
                 .title("Faire la vaisselle")
@@ -60,6 +85,11 @@ public class TestDataFactory {
     }
 
 
+    /**
+     * Création d'une liste de deux tâches
+     *
+     * @return une liste de tâches
+     */
     public static List<Task> createTaskList() {
         User user = createUser();
         Task task1 = createTask(1L, user);
@@ -84,5 +114,23 @@ public class TestDataFactory {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities())
         );
+    }
+
+    /**
+     * Création d'un objet FocusSession
+     *
+     * @param id
+     * @return objet FocusSession
+     */
+    public static FocusSession createFocusSession(Long id) {
+        User user = createUser();
+        Task task = createTask(1L, user);
+        return FocusSession.builder()
+                .user(user)
+                .task(task)
+                .id(id)
+                .status(EFocusSessionStatus.IN_PROGRESS)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 }
