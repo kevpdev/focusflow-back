@@ -86,9 +86,12 @@ class AuthControllerTest {
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
 
+        verify(jwtTokenProvider).generateToken(email);
+
         mockLoginRequest(jsonLogin)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value(token));
+
 
         logger.info("Fin should_return_jwt_when_user_has_logged_test");
     }
@@ -100,6 +103,8 @@ class AuthControllerTest {
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Invalid email or password"));
+
+        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
 
         MvcResult mvcResult = mockLoginRequest(wrongJsonLogin)
                 .andExpect(status().isUnauthorized()) // S'attendre à une erreur 401 Unauthorized
@@ -114,6 +119,8 @@ class AuthControllerTest {
     private void mockExistsEmail(boolean status) {
         // Simuler que l'email n'existe pas encore dans la base de données
         when(userService.existByEmail(email)).thenReturn(status);
+
+        verify(userService).existByEmail(email);
     }
 
     private void mockDefaultRole() {
@@ -121,6 +128,8 @@ class AuthControllerTest {
                 .name(ERole.USER.name())
                 .build();
         when(roleService.findByName(ERole.USER.name())).thenReturn(Optional.of(role));
+
+        verify(roleService).findByName(ERole.USER.name());
     }
 
     private ResultActions mockSignupRequest(String jsonRequest) throws Exception {
@@ -171,6 +180,7 @@ class AuthControllerTest {
         mockDefaultRole();
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
+        verify(jwtTokenProvider).generateToken(email);
 
         // mock appel REST Signup
         mockSignupRequest(jsonSignup)
@@ -187,7 +197,7 @@ class AuthControllerTest {
         mockDefaultRole();
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
-
+        verify(jwtTokenProvider).generateToken(email);
         // mock appel REST Signup
         mockSignupRequest(jsonSignup)
                 .andExpect(status().isCreated())

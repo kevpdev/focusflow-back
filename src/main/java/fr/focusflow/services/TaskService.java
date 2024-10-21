@@ -19,4 +19,6 @@ public interface TaskService {
     Task updateTask(Long id, Task task) throws TaskNotFoundException;
 
     void deleteTask(Long id);
+
+    Task markTaskAsCompleted(Long id) throws TaskNotFoundException;
 }

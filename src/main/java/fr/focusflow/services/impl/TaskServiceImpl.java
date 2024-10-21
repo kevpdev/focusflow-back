@@ -1,5 +1,6 @@
 package fr.focusflow.services.impl;
 
+import fr.focusflow.entities.ETaskStatus;
 import fr.focusflow.entities.Task;
 import fr.focusflow.exceptions.TaskNotFoundException;
 import fr.focusflow.mappers.TaskMapper;
@@ -14,6 +15,8 @@ import java.util.Optional;
 public class TaskServiceImpl implements TaskService {
 
 
+    private static final String TASK_NOT_FOUND_MESSAGE = "Task not found !";
+    private static final String TASK_ALREADY_COMPLETED = "Task is already completed";
     private final TaskRepository taskRepository;
 
     private final TaskMapper taskMapper;
@@ -46,7 +49,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public Task updateTask(Long id, Task task) throws TaskNotFoundException {
 
-        Task existingTask = taskRepository.findById(id).orElseThrow(() -> new TaskNotFoundException("Task Not found !"));
+        Task existingTask = taskRepository.findById(id).orElseThrow(() -> new TaskNotFoundException(TASK_NOT_FOUND_MESSAGE));
 
         taskMapper.updateTask(task, existingTask);
 
@@ -56,6 +59,20 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void deleteTask(Long id) {
         taskRepository.deleteById(id);
+    }
+
+    @Override
+    public Task markTaskAsCompleted(Long id) throws TaskNotFoundException {
+
+        Task existingTask = taskRepository.findById(id).orElseThrow(() -> new TaskNotFoundException(TASK_NOT_FOUND_MESSAGE));
+
+        if (ETaskStatus.DONE == existingTask.getStatus()) {
+            throw new IllegalArgumentException(TASK_ALREADY_COMPLETED);
+        }
+
+        existingTask.setStatus(ETaskStatus.DONE);
+
+        return taskRepository.save(existingTask);
     }
 
 

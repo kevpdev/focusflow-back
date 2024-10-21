@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping("/api/v1/tasks")
 public class TaskController {
 
     private final TaskService taskService;
@@ -56,6 +56,12 @@ public class TaskController {
     public ResponseEntity<Void> updateTask(@PathVariable Long id) {
         taskService.deleteTask(id);
         return ResponseEntity.status(HttpStatus.OK).build();
+    }
+
+    @PutMapping("/{id}/complete")
+    public ResponseEntity<Task> markTaskAsCompleted(@PathVariable Long id) throws TaskNotFoundException {
+        Task updatedTask = taskService.markTaskAsCompleted(id);
+        return ResponseEntity.status(HttpStatus.OK).body(updatedTask);
     }
 
 

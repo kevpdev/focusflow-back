@@ -2,6 +2,7 @@ package fr.focusflow.controllers;
 
 import fr.focusflow.TestDataFactory;
 import fr.focusflow.TestUtil;
+import fr.focusflow.entities.ETaskStatus;
 import fr.focusflow.entities.Task;
 import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,7 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(TaskController.class)
 class TaskControllerTest {
 
-    private static final String API_TASKS_ID = "/api/tasks/{id}";
+    private static final String API_TASKS_ID = "/api/v1/tasks/{id}";
+    private static final String API_TASK = "/api/v1/tasks";
     private Logger logger = LoggerFactory.getLogger(TaskControllerTest.class);
 
     @Autowired
@@ -86,7 +89,7 @@ class TaskControllerTest {
         String jsonRequestBody = TestUtil.objectToJsonMapper(taskRequestBody);
 
         // Simulation appel rest controller
-        mockMvc.perform(post("/api/tasks")
+        mockMvc.perform(post(API_TASK)
                         .content(jsonRequestBody)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + authorizationHeader))
@@ -99,6 +102,7 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.user.email").value("toto@gmail.com"))
                 .andExpect(jsonPath("$.user.roles[0].name").value("USER"));
 
+        verify(taskService).save(taskRequestBody);
     }
 
     @Test
@@ -107,13 +111,15 @@ class TaskControllerTest {
 
         List<Task> userTaskList = TestDataFactory.createTaskList();
 
-        when(taskService.getUserTasks(any(Long.class))).thenReturn(userTaskList);
+        when(taskService.getUserTasks(2L)).thenReturn(userTaskList);
 
-        mockMvc.perform(get("/api/tasks")
+        mockMvc.perform(get(API_TASK)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
+
+        verify(taskService).getUserTasks(2L);
     }
 
     @Test
@@ -129,6 +135,8 @@ class TaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("2"));
 
+        verify(taskService).getTaskById(2L);
+
     }
 
     @Test
@@ -139,7 +147,6 @@ class TaskControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isNotFound());
-
     }
 
     @Test
@@ -149,7 +156,7 @@ class TaskControllerTest {
         task.setTitle("Ranger la chambre");
         task.setDescription("Ranger la chambre avant le soir");
 
-        when(taskService.updateTask(any(Long.class), any(Task.class))).thenReturn(task);
+        when(taskService.updateTask(1L, task)).thenReturn(task);
 
         mockMvc.perform(put(API_TASKS_ID, 1L)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -160,18 +167,40 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.title").value("Ranger la chambre"))
                 .andExpect(jsonPath("$.description").value("Ranger la chambre avant le soir"));
 
+        verify(taskService).updateTask(1L, task);
+
     }
 
     @Test
     public void shouldDeleteTask() throws Exception {
 
-        Mockito.doNothing().when(taskService).deleteTask(any(Long.class));
+        Mockito.doNothing().when(taskService).deleteTask(1L);
 
         mockMvc.perform(delete(API_TASKS_ID, 1L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk());
 
+        verify(taskService).deleteTask(1L);
+
+    }
+
+    @Test
+    public void shouldMarkedTaskAsCompleted() throws Exception {
+
+        Task taskToComplete = TestDataFactory.createTask(1L, TestDataFactory.createUser());
+        taskToComplete.setStatus(ETaskStatus.DONE);
+        when(taskService.markTaskAsCompleted(any(Long.class))).thenReturn(taskToComplete);
+
+
+        mockMvc.perform(put(API_TASKS_ID + "/complete", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.status").value(ETaskStatus.DONE.name()));
+
+        verify(taskService).markTaskAsCompleted(1L);
     }
 
 }
