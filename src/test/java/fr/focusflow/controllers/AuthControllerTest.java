@@ -167,7 +167,6 @@ class AuthControllerTest {
         // mock appel REST Signup
         mockSignupRequest(jsonSignup)
                 .andExpect(status().isCreated());
-
     }
 
     @Test

@@ -41,7 +41,12 @@ public class AuthController {
         this.roleService = roleService;
     }
 
-
+    /**
+     * Log in with user credentials then return the generated token
+     *
+     * @param userRequestDTO
+     * @return a token (JWT)
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UserRequestDTO userRequestDTO) {
         // Test connexion
@@ -57,6 +62,14 @@ public class AuthController {
 
     }
 
+    /**
+     * Sign up with user credientials then return the new generated token
+     *
+     * @param userRequestDTO
+     * @return a new generated token (JWT)
+     * @throws EmailAlreadyExistsException
+     * @throws RoleNotFoundException
+     */
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@Valid @RequestBody UserRequestDTO userRequestDTO) throws EmailAlreadyExistsException, RoleNotFoundException {
 

@@ -130,6 +130,7 @@ public class TestDataFactory {
                 .task(task)
                 .id(id)
                 .status(EFocusSessionStatus.IN_PROGRESS)
+                .sessionStart(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();
     }

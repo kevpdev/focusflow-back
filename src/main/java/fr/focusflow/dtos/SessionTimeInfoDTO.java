@@ -9,5 +9,5 @@ import java.time.LocalDateTime;
 public record SessionTimeInfoDTO(Long sessionId,
                                  LocalDateTime sessionStart,
                                  LocalDateTime sessionEnd,
-                                 LocalDateTime remainingTime) {
+                                 Long elapsedTimeInSecond) {
 }

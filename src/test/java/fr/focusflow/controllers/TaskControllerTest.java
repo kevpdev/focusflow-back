@@ -74,8 +74,6 @@ class TaskControllerTest {
 
         // initialisatio context spring pour le bean authentication
         TestDataFactory.setUpSecurityContext();
-
-
     }
 
 
@@ -136,7 +134,6 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.id").value("2"));
 
         verify(taskService).getTaskById(2L);
-
     }
 
     @Test
@@ -168,7 +165,6 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.description").value("Ranger la chambre avant le soir"));
 
         verify(taskService).updateTask(1L, task);
-
     }
 
     @Test

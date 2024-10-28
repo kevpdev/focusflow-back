@@ -47,6 +47,7 @@ public class FocusSession {
     // Méthode appelée automatiquement avant l'insertion dans la base
     @PrePersist
     protected void onCreate() {
+        sessionStart = LocalDateTime.now();
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
