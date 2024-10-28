@@ -22,7 +22,7 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)  // Désactiver CSRF uniquement pour ces routes
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers("/api/v1/login", "/api/v1/signup", "/wsocket/**").permitAll()  // Autoriser ces endpoints
+                        .requestMatchers("/api/v1/login", "/api/v1/signup", "/wsocket/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()  // Autoriser ces endpoints
                         .anyRequest().authenticated()  // Protéger les autres endpoints
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);  // Ajouter le filtre JWT avant UsernamePassword

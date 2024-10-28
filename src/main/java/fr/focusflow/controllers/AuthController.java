@@ -10,6 +10,9 @@ import fr.focusflow.exceptions.RoleNotFoundException;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.services.RoleService;
 import fr.focusflow.services.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,14 +21,17 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
 public class AuthController {
 
-    private final static String EMAIL_ALREADY_EXISTS_ERROR_MESSAGE = "Email already exist !";
-    private final static String ROLE_NOT_FOUND_ERROR_MESSAGE = "Role not found !";
+    private static final String EMAIL_ALREADY_EXISTS_ERROR_MESSAGE = "Email already exists !";
+    private static final String ROLE_NOT_FOUND_ERROR_MESSAGE = "Role not found !";
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
@@ -41,37 +47,32 @@ public class AuthController {
         this.roleService = roleService;
     }
 
-    /**
-     * Log in with user credentials then return the generated token
-     *
-     * @param userRequestDTO
-     * @return a token (JWT)
-     */
+    @Operation(summary = "Log in to get a JWT token", description = "Authenticates user credentials and returns a JWT token if successful.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User authenticated successfully, JWT token returned"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials provided")
+    })
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UserRequestDTO userRequestDTO) {
-        // Test connexion
         Authentication authentication = authenticationManager
                 .authenticate(new UsernamePasswordAuthenticationToken(userRequestDTO.email(), userRequestDTO.password()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // Token
         String token = jwtTokenProvider.generateToken(userRequestDTO.email());
 
         return ResponseEntity.ok(new UserResponseDTO(token));
-
     }
 
-    /**
-     * Sign up with user credientials then return the new generated token
-     *
-     * @param userRequestDTO
-     * @return a new generated token (JWT)
-     * @throws EmailAlreadyExistsException
-     * @throws RoleNotFoundException
-     */
+    @Operation(summary = "Sign up a new user", description = "Creates a new user with the provided credentials and returns a JWT token.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User registered successfully, JWT token returned"),
+            @ApiResponse(responseCode = "400", description = "Email already exists"),
+            @ApiResponse(responseCode = "404", description = "User role not found")
+    })
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@Valid @RequestBody UserRequestDTO userRequestDTO) throws EmailAlreadyExistsException, RoleNotFoundException {
+    public ResponseEntity<?> signup(@Valid @RequestBody UserRequestDTO userRequestDTO)
+            throws EmailAlreadyExistsException, RoleNotFoundException {
 
         if (userService.existByEmail(userRequestDTO.email())) {
             throw new EmailAlreadyExistsException(EMAIL_ALREADY_EXISTS_ERROR_MESSAGE);
@@ -91,10 +92,5 @@ public class AuthController {
         String token = jwtTokenProvider.generateToken(newUser.getEmail());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new UserResponseDTO(token));
-    }
-
-    @GetMapping("/protected")
-    public ResponseEntity<String> testAccessProtectedRessources() {
-        return ResponseEntity.ok("Succeful access !");
     }
 }
