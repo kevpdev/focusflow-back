@@ -1,10 +1,8 @@
-Voici un exemple de README pour le projet **FocusFlow** :
-
----
-
 # FocusFlow
 
-FocusFlow est une API REST qui aide les utilisateurs à organiser leurs tâches et à gérer des sessions de focus avec des statuts comme *PENDING*, *IN_PROGRESS*, *DONE*, et *CANCELLED*. Construit avec Spring Boot, l'application utilise JWT pour l'authentification, WebSocket pour le suivi en temps réel, et inclut une documentation intégrée avec Swagger.
+FocusFlow est une API REST qui aide les utilisateurs à organiser leurs tâches et à gérer des sessions de focus avec des
+statuts comme *PENDING*, *IN_PROGRESS*, *DONE*, et *CANCELLED*. Construit avec Spring Boot, l'application utilise JWT
+pour l'authentification, WebSocket pour le suivi en temps réel, et inclut une documentation intégrée avec Swagger.
 
 ## Table des Matières
 
@@ -18,7 +16,7 @@ FocusFlow est une API REST qui aide les utilisateurs à organiser leurs tâches 
 
 ## Technologies
 
-- **Java 21** 
+- **Java 21**
 - **Spring Boot 3.x**
 - **Spring Security** - Authentification avec JWT
 - **Spring WebSocket** - Communication temps réel
@@ -36,10 +34,10 @@ FocusFlow est une API REST qui aide les utilisateurs à organiser leurs tâches 
     cd focusflow
     ```
 
-2. **Configurer la base de données :** 
+2. **Configurer la base de données :**
 
-   - Créez une base de données PostgreSQL nommée `focusflow`.
-   - Mettez à jour `src/main/resources/application.properties` avec vos informations de connexion.
+    - Créez une base de données PostgreSQL nommée `focusflow`.
+    - Mettez à jour `src/main/resources/application.properties` avec vos informations de connexion.
 
 3. **Lancer l'application :**
 
@@ -64,17 +62,17 @@ FocusFlow est une API REST qui aide les utilisateurs à organiser leurs tâches 
 ## Fonctionnalités
 
 1. **Authentification :**
-   - Inscription et connexion avec JWT.
-   - Protection des endpoints nécessitant une authentification.
+    - Inscription et connexion avec JWT.
+    - Protection des endpoints nécessitant une authentification.
 
 2. **Gestion des Tâches :**
-   - Création, récupération, mise à jour et suppression des tâches.
-   - Attribution de tâches aux utilisateurs avec des priorités et des dates d'échéance.
+    - Création, récupération, mise à jour et suppression des tâches.
+    - Attribution de tâches aux utilisateurs avec des priorités et des dates d'échéance.
 
 3. **Sessions de Focus :**
-   - Démarrer ou reprendre des sessions de focus.
-   - Gestion du statut de chaque session.
-   - Utilisation des WebSockets pour le suivi en temps réel de chaque session.
+    - Démarrer ou reprendre des sessions de focus.
+    - Gestion du statut de chaque session.
+    - Utilisation des WebSockets pour le suivi en temps réel de chaque session.
 
 ## Endpoints
 
@@ -102,13 +100,14 @@ FocusFlow est une API REST qui aide les utilisateurs à organiser leurs tâches 
 
 - **Endpoint** : `/wsocket`
 - **Souscriptions** :
-  - `/topic/sessions/{sessionId}/info` : Suivre les mises à jour d'une session de focus spécifique.
+    - `/topic/sessions/{sessionId}/info` : Suivre les mises à jour d'une session de focus spécifique.
 
 ## Exemples d'Utilisation
 
 ### Inscription d'un Utilisateur
 
 **Request :**
+
 ```json
 POST /api/v1/signup
 {
@@ -121,6 +120,7 @@ POST /api/v1/signup
 ### Démarrer une Session de Focus
 
 **Request :**
+
 ```json
 PUT /api/v1/sessions/status/start
 {
@@ -131,6 +131,7 @@ PUT /api/v1/sessions/status/start
 ### Suivi de Session en Temps Réel (WebSocket)
 
 Souscription au topic :
+
 ```
 /topic/sessions/2/info
 ```
@@ -140,6 +141,7 @@ Souscription au topic :
 ### Lancer les Tests
 
 Les tests unitaires et d'intégration peuvent être lancés avec Maven :
+
 ```bash
 ./mvnw test
 ```
