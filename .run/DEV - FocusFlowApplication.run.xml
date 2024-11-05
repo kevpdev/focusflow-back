@@ -1,0 +1,19 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="DEV - FocusFlowApplication" type="Application" factoryName="Application">
+    <envs>
+      <env name="DATABASE_DRIVER" value="org.postgresql.Driver" />
+      <env name="DATABASE_PASSWORD" value="focusflow_app" />
+      <env name="DATABASE_URL" value="jdbc:postgresql://localhost:5432/focusflow" />
+      <env name="DATABASE_USERNAME" value="focusflow_app" />
+      <env name="JWT_SECRET" value="G8afkD4RdHn3Pso9K3N1Sm7v5XHFs1QPUf8rvOmlGFHjF7GkJrZeR7bLxXBtZZtSUKXJwJ6gy9sAJsfoOlOXRg==" />
+      <env name="SERVER_PORT" value="8080" />
+      <env name="SPRING_PROFILES_ACTIVE" value="dev" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="fr.focusflow.FocusflowApplication" />
+    <module name="focusflow" />
+    <option name="PROGRAM_PARAMETERS" value="--spring.profiles.active=dev" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
