@@ -59,7 +59,7 @@ pour l'authentification, WebSocket pour le suivi en temps réel, et inclut une d
 
 - **WebSocket Endpoint :** L'endpoint WebSocket principal est `ws://localhost:8080/wsocket`.
 
-- **Herbergement Render :** Accessible depuis `https://focusflow-back.onrender.com/`.
+- **Hébergement Render :** Accessible depuis `https://focusflow-back.onrender.com/`.
 
 ## Fonctionnalités
 
