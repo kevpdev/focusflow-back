@@ -19,6 +19,9 @@ public class JwtTokenProvider {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
+    @Value("${jwt.expiration}")
+    private String jwtExpiration;
+
     // Générer la clé de signature à partir de la clé encodée en Base64
     private Key getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
@@ -28,7 +31,7 @@ public class JwtTokenProvider {
     // Générer un token JWT avec le sujet (email de l'utilisateur)
     public String generateToken(String email) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + 86400000);  // Token valide pendant 24 heures
+        Date expiryDate = new Date(now.getTime() + Long.parseLong(jwtExpiration));  // Token valide pendant 24 heures
 
         return Jwts.builder()
                 .setSubject(email)

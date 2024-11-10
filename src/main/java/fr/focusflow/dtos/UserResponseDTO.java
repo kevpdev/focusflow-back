@@ -1,4 +1,6 @@
 package fr.focusflow.dtos;
 
-public record UserResponseDTO(String token) {
+import java.util.List;
+
+public record UserResponseDTO(String message, String email, List<String> roles) {
 }

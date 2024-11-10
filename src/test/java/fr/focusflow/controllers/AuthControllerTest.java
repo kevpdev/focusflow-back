@@ -6,6 +6,7 @@ import fr.focusflow.entities.User;
 import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.security.SecurityConfig;
+import fr.focusflow.services.AuthenticatedUserService;
 import fr.focusflow.services.RoleService;
 import fr.focusflow.services.UserService;
 import org.junit.jupiter.api.Assertions;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -33,8 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Import(SecurityConfig.class)
 @WebMvcTest(AuthController.class)
@@ -63,6 +64,8 @@ class AuthControllerTest {
     @MockBean
     private RoleService roleService;
     @MockBean
+    private AuthenticatedUserService authenticatedUserService;
+    @MockBean
     private PasswordEncoder passwordEncoder;
     @MockBean
     private AuthenticationManager authenticationManager;
@@ -88,7 +91,10 @@ class AuthControllerTest {
 
         mockLoginRequest(jsonLogin)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value(token));
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(header().exists(HttpHeaders.SET_COOKIE));
+
 
         verify(jwtTokenProvider).generateToken(email);
 
@@ -110,7 +116,7 @@ class AuthControllerTest {
 
         String responsBody = mvcResult.getResponse().getContentAsString();
         logger.info("Login unauthorized, received response : " + responsBody);
-        
+
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
 
         logger.info("Fin shouldFailLoginWithInvalidCredentials");
@@ -181,7 +187,9 @@ class AuthControllerTest {
         // mock appel REST Signup
         mockSignupRequest(jsonSignup)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value(token));
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(header().exists(HttpHeaders.SET_COOKIE));
 
         verify(jwtTokenProvider).generateToken(email);
         verify(userService).existByEmail(email);
@@ -201,7 +209,10 @@ class AuthControllerTest {
         // mock appel REST Signup
         mockSignupRequest(jsonSignup)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value(token));
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(header().exists(HttpHeaders.SET_COOKIE));
+
 
         // Capture des arguments passés à userService.save
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);

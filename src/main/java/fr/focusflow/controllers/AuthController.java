@@ -8,13 +8,17 @@ import fr.focusflow.entities.User;
 import fr.focusflow.exceptions.EmailAlreadyExistsException;
 import fr.focusflow.exceptions.RoleNotFoundException;
 import fr.focusflow.security.JwtTokenProvider;
+import fr.focusflow.services.AuthenticatedUserService;
 import fr.focusflow.services.RoleService;
 import fr.focusflow.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,6 +29,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -37,14 +43,19 @@ public class AuthController {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final RoleService roleService;
+    private final AuthenticatedUserService authenticatedUserService;
+    @Value("${jwt.expiration}")
+    private String jwtExpiration;
 
     public AuthController(JwtTokenProvider jwtTokenProvider, AuthenticationManager authenticationManager,
-                          UserService userService, PasswordEncoder passwordEncoder, RoleService roleService) {
+                          UserService userService, PasswordEncoder passwordEncoder, RoleService roleService,
+                          AuthenticatedUserService authenticatedUserService) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.authenticationManager = authenticationManager;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.roleService = roleService;
+        this.authenticatedUserService = authenticatedUserService;
     }
 
     @Operation(summary = "Log in to get a JWT token", description = "Authenticates user credentials and returns a JWT token if successful.")
@@ -53,15 +64,23 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Invalid credentials provided")
     })
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody UserRequestDTO userRequestDTO) {
+    public ResponseEntity<UserResponseDTO> login(@RequestBody UserRequestDTO userRequestDTO) {
         Authentication authentication = authenticationManager
                 .authenticate(new UsernamePasswordAuthenticationToken(userRequestDTO.email(), userRequestDTO.password()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String token = jwtTokenProvider.generateToken(userRequestDTO.email());
+        ResponseCookie responseCookie = ResponseCookie.from("token", token).
+                httpOnly(true)
+                .secure(true) // to forced https connection
+                .path("/")
+                .maxAge(Duration.ofSeconds(Long.parseLong(jwtExpiration)))
+                .build();
 
-        return ResponseEntity.ok(new UserResponseDTO(token));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, responseCookie.toString())
+                .body(new UserResponseDTO("Login successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
     }
 
     @Operation(summary = "Sign up a new user", description = "Creates a new user with the provided credentials and returns a JWT token.")
@@ -71,7 +90,7 @@ public class AuthController {
             @ApiResponse(responseCode = "404", description = "User role not found")
     })
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@Valid @RequestBody UserRequestDTO userRequestDTO)
+    public ResponseEntity<UserResponseDTO> signup(@Valid @RequestBody UserRequestDTO userRequestDTO)
             throws EmailAlreadyExistsException, RoleNotFoundException {
 
         if (userService.existByEmail(userRequestDTO.email())) {
@@ -89,8 +108,16 @@ public class AuthController {
 
         userService.save(newUser);
 
-        String token = jwtTokenProvider.generateToken(newUser.getEmail());
+        String token = jwtTokenProvider.generateToken(userRequestDTO.email());
+        ResponseCookie responseCookie = ResponseCookie.from("token", token).
+                httpOnly(true)
+                .secure(true) // to forced https connection
+                .path("/")
+                .maxAge(Duration.ofSeconds(Long.parseLong(jwtExpiration)))
+                .build();
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(new UserResponseDTO(token));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header(HttpHeaders.SET_COOKIE, responseCookie.toString())
+                .body(new UserResponseDTO("Sign up successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
     }
 }

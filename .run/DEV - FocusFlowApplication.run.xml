@@ -8,6 +8,7 @@
       <env name="JWT_SECRET" value="G8afkD4RdHn3Pso9K3N1Sm7v5XHFs1QPUf8rvOmlGFHjF7GkJrZeR7bLxXBtZZtSUKXJwJ6gy9sAJsfoOlOXRg==" />
       <env name="SERVER_PORT" value="8080" />
       <env name="SPRING_PROFILES_ACTIVE" value="dev" />
+      <env name="JWT_EXPIRATION" value="86400" />
     </envs>
     <option name="MAIN_CLASS_NAME" value="fr.focusflow.FocusflowApplication" />
     <module name="focusflow" />
