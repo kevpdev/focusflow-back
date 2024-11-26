@@ -14,6 +14,8 @@ import fr.focusflow.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -25,15 +27,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private static final String EMAIL_ALREADY_EXISTS_ERROR_MESSAGE = "Email already exists !";
@@ -44,8 +43,10 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final RoleService roleService;
     private final AuthenticatedUserService authenticatedUserService;
-    @Value("${jwt.expiration}")
-    private String jwtExpiration;
+    @Value("${jwt.token.expiration}")
+    private String jwtTokenExpiration;
+    @Value("${jwt.refresh.token.expiration}")
+    private String jwtRefreshTokenExpiration;
 
     public AuthController(JwtTokenProvider jwtTokenProvider, AuthenticationManager authenticationManager,
                           UserService userService, PasswordEncoder passwordEncoder, RoleService roleService,
@@ -70,18 +71,60 @@ public class AuthController {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String token = jwtTokenProvider.generateToken(userRequestDTO.email());
-        ResponseCookie responseCookie = ResponseCookie.from("token", token).
-                httpOnly(true)
-                .secure(true) // to forced https connection
-                .path("/")
-                .maxAge(Duration.ofSeconds(Long.parseLong(jwtExpiration)))
-                .build();
+        String accesToken = jwtTokenProvider.generateToken(userRequestDTO.email());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userRequestDTO.email());
+
+        ResponseCookie accessCookie = getAccessToken(accesToken);
+        ResponseCookie refreshCookie = getRefreshToken(refreshToken);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, responseCookie.toString())
+                .headers(headers)
                 .body(new UserResponseDTO("Login successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
     }
+
+    @Operation(summary = "Generate a new access token", description = "Generate a new access token if refresh token is still valid.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Refresh token validation successfully, new JWT token returned"),
+            @ApiResponse(responseCode = "401", description = "Refresh token hax expirated")
+    })
+    @PostMapping("/refresh")
+    public ResponseEntity<UserResponseDTO> refreshToken(HttpServletRequest request) {
+
+        String refreshToken = jwtTokenProvider.extractRefreshTokenFromCookie(request);
+
+        if (jwtTokenProvider.validateToken(refreshToken)) {
+            String email = jwtTokenProvider.getEmailFromToken(refreshToken);
+            String newAccessToken = jwtTokenProvider.generateToken(email);
+
+            ResponseCookie accessCookie = ResponseCookie.from("accessToken", newAccessToken)
+                    .httpOnly(true)
+                    .secure(true)
+                    .path("/")
+                    .maxAge(Long.parseLong(jwtTokenExpiration))
+                    .sameSite("Strict")
+                    .build();
+
+            List<String> roles = authenticatedUserService.getAuthenticatedUserRoles();
+
+            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(new UserResponseDTO("refresh token successful !", email, roles));
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Verify if the user is authenticated", description = "Verify if the user is authenticated and if the access token is valid.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User is authenticated and access token is valid")})
+    @GetMapping("/isAuthenticated")
+    public ResponseEntity<Boolean> isAuthenticated() {
+        return ResponseEntity.ok().body(true);
+    }
+
 
     @Operation(summary = "Sign up a new user", description = "Creates a new user with the provided credentials and returns a JWT token.")
     @ApiResponses(value = {
@@ -108,16 +151,80 @@ public class AuthController {
 
         userService.save(newUser);
 
-        String token = jwtTokenProvider.generateToken(userRequestDTO.email());
-        ResponseCookie responseCookie = ResponseCookie.from("token", token).
-                httpOnly(true)
-                .secure(true) // to forced https connection
-                .path("/")
-                .maxAge(Duration.ofSeconds(Long.parseLong(jwtExpiration)))
-                .build();
+        String accesToken = jwtTokenProvider.generateToken(userRequestDTO.email());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userRequestDTO.email());
+
+        ResponseCookie accessCookie = getAccessToken(accesToken);
+        ResponseCookie refreshCookie = getRefreshToken(refreshToken);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .header(HttpHeaders.SET_COOKIE, responseCookie.toString())
+                .headers(headers)
                 .body(new UserResponseDTO("Sign up successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
     }
+
+
+    @Operation(summary = "Log out the user", description = "Clears the authentication cookies to log out the user.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User logged out successfully")
+    })
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        ResponseCookie deleteAccessCookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0) // Delete immediately
+                .sameSite("Strict")
+                .build();
+
+        ResponseCookie deleteRefreshCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0) // Delete immediately
+                .sameSite("Strict")
+                .build();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.SET_COOKIE, deleteAccessCookie.toString());
+        headers.add(HttpHeaders.SET_COOKIE, deleteRefreshCookie.toString());
+
+        return ResponseEntity.ok().headers(headers).build();
+    }
+
+
+    /**
+     * Get an JWT acces cookie
+     *
+     * @param accesToken
+     * @return a ResponseCookie object
+     */
+    private ResponseCookie getAccessToken(String accesToken) {
+        return ResponseCookie.from("accessToken", accesToken).
+                httpOnly(true)
+                .secure(true) // to force https connection
+                .path("/")
+                .maxAge(Long.parseLong(jwtTokenExpiration))
+                .build();
+    }
+
+    /**
+     * Get an JWT refresh  cookie
+     *
+     * @param refreshToken
+     * @return a ResponseCookie object
+     */
+    private ResponseCookie getRefreshToken(String refreshToken) {
+        return ResponseCookie.from("refreshToken", refreshToken).
+                httpOnly(true)
+                .secure(true) // to force https connection
+                .path("/")
+                .maxAge(Long.parseLong(jwtRefreshTokenExpiration))
+                .build();
+    }
+
 }

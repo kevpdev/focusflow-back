@@ -21,12 +21,22 @@ public class AuthenticatedUserService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Get the email of an authenficated user
+     *
+     * @return an email in String format
+     */
     public String getAuthenticatedUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
         return currentUser.getUsername();
     }
 
+    /**
+     * Get roles of an anthenticated user
+     *
+     * @return the roles in String List Format
+     */
     public List<String> getAuthenticatedUserRoles() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -36,9 +46,9 @@ public class AuthenticatedUserService {
     }
 
     /**
-     * Retourne l'utilisateur connecté
+     * Get an authenticated user
      *
-     * @return un objet User
+     * @return a user object
      */
     public User getAuthenticatedUser() {
         String email = getAuthenticatedUserEmail();
