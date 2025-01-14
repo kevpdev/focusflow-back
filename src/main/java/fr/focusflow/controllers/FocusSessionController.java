@@ -1,7 +1,7 @@
 package fr.focusflow.controllers;
 
+import fr.focusflow.dtos.FocusSessionDTO;
 import fr.focusflow.dtos.FocusSessionRequestDTO;
-import fr.focusflow.entities.FocusSession;
 import fr.focusflow.exceptions.FocusSessionNotFoundException;
 import fr.focusflow.exceptions.FocusSessionStatusException;
 import fr.focusflow.services.FocusSessionService;
@@ -32,9 +32,9 @@ public class FocusSessionController {
             @ApiResponse(responseCode = "404", description = "Task or session not found")
     })
     @PutMapping("/status/start")
-    public ResponseEntity<FocusSession> startOrResumeSession(
+    public ResponseEntity<FocusSessionDTO> startOrResumeSession(
             @RequestBody FocusSessionRequestDTO focusSessionRequestDTO) throws Exception {
-        FocusSession focusSession = focusSessionService.startOrResumeSession(focusSessionRequestDTO.taskId(),
+        FocusSessionDTO focusSession = focusSessionService.startOrResumeSession(focusSessionRequestDTO.taskId(),
                 focusSessionRequestDTO.sessionId());
         return ResponseEntity.status(HttpStatus.OK).body(focusSession);
     }
@@ -46,10 +46,10 @@ public class FocusSessionController {
             @ApiResponse(responseCode = "400", description = "Invalid status transition")
     })
     @PutMapping("/status/pending/{sessionId}")
-    public ResponseEntity<FocusSession> markSessionStatusAsPending(
+    public ResponseEntity<FocusSessionDTO> markSessionStatusAsPending(
             @Parameter(description = "ID of the session to mark as pending") @PathVariable Long sessionId)
             throws FocusSessionNotFoundException, FocusSessionStatusException {
-        FocusSession focusSession = focusSessionService.markFocusSessionAsPending(sessionId);
+        FocusSessionDTO focusSession = focusSessionService.markFocusSessionAsPending(sessionId);
         return ResponseEntity.status(HttpStatus.OK).body(focusSession);
     }
 
@@ -60,24 +60,11 @@ public class FocusSessionController {
             @ApiResponse(responseCode = "400", description = "Invalid status transition")
     })
     @PutMapping("/status/done/{sessionId}")
-    public ResponseEntity<FocusSession> markSessionStatusAsDone(
+    public ResponseEntity<FocusSessionDTO> markSessionStatusAsDone(
             @Parameter(description = "ID of the session to mark as done") @PathVariable Long sessionId)
             throws FocusSessionNotFoundException, FocusSessionStatusException {
-        FocusSession focusSession = focusSessionService.markFocusSessionAsDone(sessionId);
+        FocusSessionDTO focusSession = focusSessionService.markFocusSessionAsDone(sessionId);
         return ResponseEntity.status(HttpStatus.OK).body(focusSession);
     }
-
-    @Operation(summary = "Mark session as cancelled", description = "Cancels a session by marking its status as cancelled.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Session marked as cancelled successfully"),
-            @ApiResponse(responseCode = "404", description = "Session not found"),
-            @ApiResponse(responseCode = "400", description = "Invalid status transition")
-    })
-    @PutMapping("/status/cancelled/{sessionId}")
-    public ResponseEntity<FocusSession> markSessionStatusAsCancelled(
-            @Parameter(description = "ID of the session to mark as cancelled") @PathVariable Long sessionId)
-            throws FocusSessionNotFoundException, FocusSessionStatusException {
-        FocusSession focusSession = focusSessionService.markFocusSessionAsCancelled(sessionId);
-        return ResponseEntity.status(HttpStatus.OK).body(focusSession);
-    }
+    
 }

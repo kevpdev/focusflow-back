@@ -34,16 +34,29 @@ public class Task {
     @Enumerated(EnumType.STRING)
     // Utilise EnumType.STRING pour stocker la valeur de l'énumération comme chaîne de caractères
     @Column(length = 50, nullable = false)
-    private ETaskStatus status = ETaskStatus.PENDING;  // Valeur par défaut
+    private EStatus status = EStatus.PENDING;  // Valeur par défaut
 
     @Column(columnDefinition = "INT DEFAULT 1")
     private Integer priority = 1;
 
     private LocalDate dueDate;
 
+    @Builder.Default
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @PrePersist
+    public void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

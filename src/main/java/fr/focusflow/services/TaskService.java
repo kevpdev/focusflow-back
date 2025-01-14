@@ -1,6 +1,7 @@
 package fr.focusflow.services;
 
-import fr.focusflow.entities.Task;
+import fr.focusflow.dtos.TaskDTO;
+import fr.focusflow.entities.EStatus;
 import fr.focusflow.exceptions.TaskNotFoundException;
 
 import java.util.List;
@@ -8,17 +9,17 @@ import java.util.Optional;
 
 public interface TaskService {
 
-    Task save(Task newTask);
+    TaskDTO save(TaskDTO newTaskDTO);
 
-    List<Task> findAll();
+    List<TaskDTO> findAllTasksByUserIdAndStatus(Long UserId, EStatus status);
 
-    List<Task> getUserTasks(Long userId);
+    List<TaskDTO> findAllTasksByUserId(Long userId);
 
-    Optional<Task> getTaskById(Long taskId);
+    Optional<TaskDTO> findTaskById(Long taskId);
 
-    Task updateTask(Long id, Task task) throws TaskNotFoundException;
+    TaskDTO updateTask(Long id, TaskDTO taskDTO) throws TaskNotFoundException;
 
     void deleteTask(Long id);
 
-    Task markTaskAsCompleted(Long id) throws TaskNotFoundException;
+    List<TaskDTO> updateStatusOfAllTasks(List<TaskDTO> taskListToUpdate);
 }

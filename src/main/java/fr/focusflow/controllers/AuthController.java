@@ -27,6 +27,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -65,7 +66,7 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Invalid credentials provided")
     })
     @PostMapping("/login")
-    public ResponseEntity<UserResponseDTO> login(@RequestBody UserRequestDTO userRequestDTO) {
+    public ResponseEntity<UserResponseDTO> login(@RequestBody UserRequestDTO userRequestDTO, HttpServletRequest request) {
         Authentication authentication = authenticationManager
                 .authenticate(new UsernamePasswordAuthenticationToken(userRequestDTO.email(), userRequestDTO.password()));
 
@@ -73,6 +74,8 @@ public class AuthController {
 
         String accesToken = jwtTokenProvider.generateToken(userRequestDTO.email());
         String refreshToken = jwtTokenProvider.generateRefreshToken(userRequestDTO.email());
+        // Récupérer le CSRF Token
+        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 
         ResponseCookie accessCookie = getAccessToken(accesToken);
         ResponseCookie refreshCookie = getRefreshToken(refreshToken);
@@ -83,7 +86,7 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(new UserResponseDTO("Login successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
+                .body(new UserResponseDTO("Login successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles(), csrfToken));
     }
 
     @Operation(summary = "Generate a new access token", description = "Generate a new access token if refresh token is still valid.")
@@ -99,6 +102,7 @@ public class AuthController {
         if (jwtTokenProvider.validateToken(refreshToken)) {
             String email = jwtTokenProvider.getEmailFromToken(refreshToken);
             String newAccessToken = jwtTokenProvider.generateToken(email);
+            CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 
             ResponseCookie accessCookie = ResponseCookie.from("accessToken", newAccessToken)
                     .httpOnly(true)
@@ -110,7 +114,7 @@ public class AuthController {
 
             List<String> roles = authenticatedUserService.getAuthenticatedUserRoles();
 
-            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(new UserResponseDTO("refresh token successful !", email, roles));
+            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(new UserResponseDTO("refresh token successful !", email, roles, csrfToken));
         } else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -133,7 +137,7 @@ public class AuthController {
             @ApiResponse(responseCode = "404", description = "User role not found")
     })
     @PostMapping("/signup")
-    public ResponseEntity<UserResponseDTO> signup(@Valid @RequestBody UserRequestDTO userRequestDTO)
+    public ResponseEntity<UserResponseDTO> signup(@Valid @RequestBody UserRequestDTO userRequestDTO, HttpServletRequest request)
             throws EmailAlreadyExistsException, RoleNotFoundException {
 
         if (userService.existByEmail(userRequestDTO.email())) {
@@ -153,6 +157,7 @@ public class AuthController {
 
         String accesToken = jwtTokenProvider.generateToken(userRequestDTO.email());
         String refreshToken = jwtTokenProvider.generateRefreshToken(userRequestDTO.email());
+        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 
         ResponseCookie accessCookie = getAccessToken(accesToken);
         ResponseCookie refreshCookie = getRefreshToken(refreshToken);
@@ -163,7 +168,7 @@ public class AuthController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .headers(headers)
-                .body(new UserResponseDTO("Sign up successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
+                .body(new UserResponseDTO("Sign up successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles(), csrfToken));
     }
 
 

@@ -289,4 +289,17 @@ class AuthControllerTest {
                 .andExpect(content().string("true"));
     }
 
+    @Test
+    public void testIsAuthenticatedWithBearer() throws Exception {
+
+        // initialisatio context spring pour le bean authentication
+        TestDataFactory.setUpSecurityContext();
+
+        mockMvc.perform(get("/api/v1/auth/isAuthenticated")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer fake_secret_jwt_GFHjF7GkJrZeR7bLxXBtZZtS"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("true"));
+    }
+
 }

@@ -1,6 +1,7 @@
 package fr.focusflow.controllers;
 
-import fr.focusflow.entities.Task;
+import fr.focusflow.dtos.TaskDTO;
+import fr.focusflow.entities.EStatus;
 import fr.focusflow.exceptions.TaskNotFoundException;
 import fr.focusflow.security.CustomUserDetails;
 import fr.focusflow.services.TaskService;
@@ -30,21 +31,14 @@ public class TaskController {
         this.taskService = taskService;
     }
 
-    @Operation(summary = "Create a new task", description = "Creates a new task and returns it with its generated ID.")
-    @ApiResponse(responseCode = "201", description = "Task successfully created")
-    @PostMapping
-    public ResponseEntity<Task> saveTask(@RequestBody Task task) {
-        Task savedTask = taskService.save(task);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedTask);
-    }
 
     @Operation(summary = "Get all tasks for the current user", description = "Fetches all tasks assigned to the authenticated user.")
     @ApiResponse(responseCode = "200", description = "List of tasks successfully retrieved")
     @GetMapping
-    public ResponseEntity<List<Task>> getAllUserTask(Authentication authentication) {
+    public ResponseEntity<List<TaskDTO>> findAllTasksByUserId(Authentication authentication) {
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
-        List<Task> userTasks = taskService.getUserTasks(currentUser.getId());
-        return ResponseEntity.status(HttpStatus.OK).body(userTasks);
+        List<TaskDTO> tasksByUserId = taskService.findAllTasksByUserId(currentUser.getId());
+        return ResponseEntity.status(HttpStatus.OK).body(tasksByUserId);
     }
 
     @Operation(summary = "Retrieve a specific task by ID", description = "Fetches the details of a task by its ID.")
@@ -53,10 +47,28 @@ public class TaskController {
             @ApiResponse(responseCode = "404", description = "Task not found")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<Task> getTaskById(
+    public ResponseEntity<TaskDTO> getTaskById(
             @Parameter(description = "ID of the task to be retrieved") @PathVariable Long id) throws TaskNotFoundException {
-        Task task = taskService.getTaskById(id).orElseThrow(() -> new TaskNotFoundException("Task not found!"));
+        TaskDTO task = taskService.findTaskById(id).orElseThrow(() -> new TaskNotFoundException("Task not found!"));
         return ResponseEntity.status(HttpStatus.OK).body(task);
+    }
+
+
+    @Operation(summary = "Get all tasks for the current user by status", description = "Fetches all tasks assigned to the authenticated user by status.")
+    @ApiResponse(responseCode = "200", description = "List of tasks successfully retrieved")
+    @GetMapping("/search")
+    public ResponseEntity<List<TaskDTO>> findAllTasksByUserIdAndStatus(Authentication authentication, @RequestParam("status") EStatus status) {
+        CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
+        List<TaskDTO> userTasks = taskService.findAllTasksByUserIdAndStatus(currentUser.getId(), status);
+        return ResponseEntity.status(HttpStatus.OK).body(userTasks);
+    }
+
+    @Operation(summary = "Create a new task", description = "Creates a new task and returns it with its generated ID.")
+    @ApiResponse(responseCode = "201", description = "Task successfully created")
+    @PostMapping
+    public ResponseEntity<TaskDTO> saveTask(@RequestBody TaskDTO taskDTO) {
+        TaskDTO savedTask = taskService.save(taskDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedTask);
     }
 
     @Operation(summary = "Update an existing task", description = "Updates the details of an existing task by its ID.")
@@ -65,11 +77,11 @@ public class TaskController {
             @ApiResponse(responseCode = "404", description = "Task not found")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<Task> updateTask(
+    public ResponseEntity<TaskDTO> updateTask(
             @Parameter(description = "ID of the task to be updated") @PathVariable Long id,
-            @RequestBody Task task) throws TaskNotFoundException {
-        Task updatedTask = taskService.updateTask(id, task);
-        return ResponseEntity.status(HttpStatus.OK).body(updatedTask);
+            @RequestBody TaskDTO taskDTO) throws TaskNotFoundException {
+        TaskDTO modifiedTask = taskService.updateTask(id, taskDTO);
+        return ResponseEntity.status(HttpStatus.OK).body(modifiedTask);
     }
 
     @Operation(summary = "Delete a task", description = "Deletes a task by its ID.")
@@ -83,15 +95,14 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
-    @Operation(summary = "Mark a task as completed", description = "Marks a task as completed by updating its status.")
+    @Operation(summary = "Update status of all tasks", description = "Update status of all tasks and return all modified tasks")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Task successfully marked as completed"),
-            @ApiResponse(responseCode = "404", description = "Task not found")
+            @ApiResponse(responseCode = "200", description = "Modified tasks successfully"),
+            @ApiResponse(responseCode = "404", description = "Tasks not found")
     })
-    @PutMapping("/{id}/complete")
-    public ResponseEntity<Task> markTaskAsCompleted(
-            @Parameter(description = "ID of the task to be marked as completed") @PathVariable Long id) throws TaskNotFoundException {
-        Task updatedTask = taskService.markTaskAsCompleted(id);
-        return ResponseEntity.status(HttpStatus.OK).body(updatedTask);
+    @PutMapping("/status")
+    public ResponseEntity<List<TaskDTO>> updateStatusOfAllTasks(@RequestBody List<TaskDTO> tasksToUpdate) {
+        List<TaskDTO> modifiedTask = taskService.updateStatusOfAllTasks(tasksToUpdate);
+        return ResponseEntity.status(HttpStatus.OK).body(modifiedTask);
     }
 }

@@ -1,5 +1,6 @@
 package fr.focusflow.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +27,7 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    @JsonIgnore
     private String password;
 
     @ManyToMany(fetch = FetchType.EAGER)

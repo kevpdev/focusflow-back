@@ -2,8 +2,11 @@ package fr.focusflow.controllers;
 
 import fr.focusflow.TestDataFactory;
 import fr.focusflow.TestUtil;
-import fr.focusflow.entities.ETaskStatus;
+import fr.focusflow.dtos.TaskDTO;
+import fr.focusflow.entities.EStatus;
 import fr.focusflow.entities.Task;
+import fr.focusflow.mappers.TaskMapper;
+import fr.focusflow.mappers.TaskMapperImpl;
 import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.security.SecurityConfig;
@@ -27,11 +30,12 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, TaskMapperImpl.class})
 @WebMvcTest(TaskController.class)
 class TaskControllerTest {
 
@@ -42,6 +46,9 @@ class TaskControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private TaskMapper taskMapper;
+
     @MockBean
     private TaskService taskService;
 
@@ -51,24 +58,11 @@ class TaskControllerTest {
     @MockBean
     private CustomUserDetailsService customUserDetailsService;
 
-    private Task taskRequestBody;
-    private Task taskResponseBody;
     private String authorizationHeader;
 
 
     @BeforeEach
     void setUp() {
-        taskRequestBody = TestDataFactory.createRequestBodyTask();
-
-        taskResponseBody = Task.builder()
-                .id(1L)  // simule la génération de l'id apres la sauvegarde
-                .title(taskRequestBody.getTitle())
-                .description(taskRequestBody.getDescription())
-                .priority(taskRequestBody.getPriority())
-                .status(taskRequestBody.getStatus())
-                .user(taskRequestBody.getUser()) // Attention si l'utilisateur est mutable
-                .dueDate(taskRequestBody.getDueDate())
-                .build();
 
         authorizationHeader = "Bearer eykds5fsdg55sf5sdf5sf5sdf5sf_fake_token";
 
@@ -81,24 +75,28 @@ class TaskControllerTest {
     @WithMockUser(username = "toto", roles = {"USER"})
     public void shouldReturnSavedNewTask() throws Exception {
 
+        TaskDTO taskRequestBody = TestDataFactory.createTaskDTO(null);
+        TaskDTO taskResponseBody = TestDataFactory.createTaskDTO(1L);
+
+
         // Simuler la réponse du service
-        when(taskService.save(any(Task.class))).thenReturn(taskResponseBody);
+        when(taskService.save(taskRequestBody)).thenReturn(taskResponseBody);
 
         String jsonRequestBody = TestUtil.objectToJsonMapper(taskRequestBody);
 
         // Simulation appel rest controller
         mockMvc.perform(post(API_TASK)
+                        .with(csrf())
                         .content(jsonRequestBody)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + authorizationHeader))
+                        .header("Authorization", authorizationHeader))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.title").value(taskResponseBody.getTitle()))
-                .andExpect(jsonPath("$.description").value(taskResponseBody.getDescription()))
-                .andExpect(jsonPath("$.priority").value(taskResponseBody.getPriority()))
-                .andExpect(jsonPath("$.status").value(taskResponseBody.getStatus().name()))
-                .andExpect(jsonPath("$.user.username").value("toto"))
-                .andExpect(jsonPath("$.user.email").value("toto@gmail.com"))
-                .andExpect(jsonPath("$.user.roles[0].name").value("USER"));
+                .andExpect(jsonPath("$.title").value(taskResponseBody.title()))
+                .andExpect(jsonPath("$.description").value(taskResponseBody.description()))
+                .andExpect(jsonPath("$.priority").value(taskResponseBody.priority()))
+                .andExpect(jsonPath("$.status").value(taskResponseBody.status().name()))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty())
+                .andExpect(jsonPath("$.userId").value("2"));
 
         verify(taskService).save(taskRequestBody);
     }
@@ -107,37 +105,51 @@ class TaskControllerTest {
     @WithMockUser(username = "toto", roles = {"USER"})
     public void shouldReturnTaskListByUserId() throws Exception {
 
-        List<Task> userTaskList = TestDataFactory.createTaskList();
+        List<TaskDTO> tasksDTObyUserId = TestDataFactory.createTaskDTOList();
 
-        when(taskService.getUserTasks(2L)).thenReturn(userTaskList);
+        when(taskService.findAllTasksByUserId(2L)).thenReturn(tasksDTObyUserId);
 
         mockMvc.perform(get(API_TASK)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
 
-        verify(taskService).getUserTasks(2L);
+
+                .andExpect(jsonPath("$[0].id").value(tasksDTObyUserId.getFirst().id()))
+                .andExpect(jsonPath("$[0].title").value(tasksDTObyUserId.getFirst().title()))
+                .andExpect(jsonPath("$[0].description").value(tasksDTObyUserId.getFirst().description()))
+                .andExpect(jsonPath("$[0].status").value(tasksDTObyUserId.getFirst().status().name()))
+
+                .andExpect(jsonPath("$[1].id").value(tasksDTObyUserId.get(1).id()))
+                .andExpect(jsonPath("$[1].title").value(tasksDTObyUserId.get(1).title()))
+                .andExpect(jsonPath("$[1].description").value(tasksDTObyUserId.get(1).description()))
+                .andExpect(jsonPath("$[1].status").value(tasksDTObyUserId.get(1).status().name()));
+
+
+        verify(taskService).findAllTasksByUserId(2L);
     }
 
     @Test
-    @WithMockUser(username = "toto", roles = {"USER"})
     public void shouldReturnTaskById() throws Exception {
 
-        Task task = TestDataFactory.createTask(2L, TestDataFactory.createUser());
-        when(taskService.getTaskById(any(Long.class))).thenReturn(Optional.of(task));
+        TaskDTO task = TestDataFactory.createTaskDTO(2L);
+        when(taskService.findTaskById(any(Long.class))).thenReturn(Optional.of(task));
 
         mockMvc.perform(get(API_TASKS_ID, 2L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("2"));
+                .andExpect(jsonPath("$.id").value(task.id()))
+                .andExpect(jsonPath("$.title").value(task.title()))
+                .andExpect(jsonPath("$.description").value(task.description()))
+                .andExpect(jsonPath("$.status").value(task.status().toString()));
 
-        verify(taskService).getTaskById(2L);
+        verify(taskService).findTaskById(2L);
     }
 
     @Test
-    @WithMockUser(username = "toto", roles = {"USER"})
     public void shouldReturn404ErrorWhenTaskNotFound() throws Exception {
 
         mockMvc.perform(get(API_TASKS_ID, 2L)
@@ -149,22 +161,23 @@ class TaskControllerTest {
     @Test
     public void shouldReturnUpdatedTask() throws Exception {
 
-        Task task = TestDataFactory.createTask(1L, TestDataFactory.createUser());
-        task.setTitle("Ranger la chambre");
-        task.setDescription("Ranger la chambre avant le soir");
-
-        when(taskService.updateTask(1L, task)).thenReturn(task);
+        Task task = TestDataFactory.createTask(1L, "Ranger la chambre", "Ranger la chambre avant le soir", EStatus.IN_PROGRESS, 3, TestDataFactory.createUser());
+        TaskDTO taskDTO = taskMapper.mapTaskToTaskDTO(task);
+        when(taskService.updateTask(1L, taskDTO)).thenReturn(taskDTO);
 
         mockMvc.perform(put(API_TASKS_ID, 1L)
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader)
-                        .content(TestUtil.objectToJsonMapper(task)))
+                        .content(TestUtil.objectToJsonMapper(taskDTO)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("1"))
                 .andExpect(jsonPath("$.title").value("Ranger la chambre"))
-                .andExpect(jsonPath("$.description").value("Ranger la chambre avant le soir"));
+                .andExpect(jsonPath("$.description").value("Ranger la chambre avant le soir"))
+                .andExpect(jsonPath("$.priority").value("3"))
+                .andExpect(jsonPath("$.userId").value("2"));
 
-        verify(taskService).updateTask(1L, task);
+        verify(taskService).updateTask(1L, taskDTO);
     }
 
     @Test
@@ -173,6 +186,7 @@ class TaskControllerTest {
         Mockito.doNothing().when(taskService).deleteTask(1L);
 
         mockMvc.perform(delete(API_TASKS_ID, 1L)
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk());
@@ -182,21 +196,32 @@ class TaskControllerTest {
     }
 
     @Test
-    public void shouldMarkedTaskAsCompleted() throws Exception {
+    public void shouldUpdateStatusOfAllTasks() throws Exception {
 
-        Task taskToComplete = TestDataFactory.createTask(1L, TestDataFactory.createUser());
-        taskToComplete.setStatus(ETaskStatus.DONE);
-        when(taskService.markTaskAsCompleted(any(Long.class))).thenReturn(taskToComplete);
+        List<Task> tasksToUpdate = TestDataFactory.createTaskList();
+        tasksToUpdate.get(0).setStatus(EStatus.IN_PROGRESS);
+        tasksToUpdate.get(1).setStatus(EStatus.DONE);
 
+        List<TaskDTO> modifiedTasksDTO = tasksToUpdate
+                .stream()
+                .map(taskMapper::mapTaskToTaskDTO)
+                .toList();
 
-        mockMvc.perform(put(API_TASKS_ID + "/complete", 1L)
+        when(taskService.updateStatusOfAllTasks(any())).thenReturn(modifiedTasksDTO);
+
+        mockMvc.perform(put(API_TASK + "/status")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", authorizationHeader))
+                        .header("Authorization", authorizationHeader)
+                        .content(TestUtil.objectToJsonMapper(modifiedTasksDTO)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.status").value(ETaskStatus.DONE.name()));
+                .andExpect(jsonPath("$[0].id").value(modifiedTasksDTO.get(0).id()))
+                .andExpect(jsonPath("$[0].status").value(String.valueOf(EStatus.IN_PROGRESS)))
 
-        verify(taskService).markTaskAsCompleted(1L);
+                .andExpect(jsonPath("$[1].id").value(modifiedTasksDTO.get(1).id()))
+                .andExpect(jsonPath("$[1].status").value(String.valueOf(EStatus.DONE)));
+
+        verify(taskService).updateStatusOfAllTasks(modifiedTasksDTO);
     }
 
 }

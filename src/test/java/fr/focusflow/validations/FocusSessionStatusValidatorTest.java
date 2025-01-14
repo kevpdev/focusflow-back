@@ -1,7 +1,7 @@
 package fr.focusflow.validations;
 
 import fr.focusflow.TestDataFactory;
-import fr.focusflow.entities.EFocusSessionStatus;
+import fr.focusflow.entities.EStatus;
 import fr.focusflow.entities.FocusSession;
 import fr.focusflow.exceptions.FocusSessionStatusException;
 import org.junit.jupiter.api.Assertions;
@@ -20,51 +20,40 @@ class FocusSessionStatusValidatorTest {
     @Test
     public void shouldAllowTransitionStatusFromPendingToInProgess() {
 
-        FocusSession existingSession = TestDataFactory.createFocusSession(1L);
-        existingSession.setStatus(EFocusSessionStatus.PENDING);
-        Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EFocusSessionStatus.IN_PROGRESS, existingSession));
+        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+        existingSession.setStatus(EStatus.PENDING);
+        Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EStatus.IN_PROGRESS, existingSession));
     }
 
     @Test
     public void shouldAllowTransitionStatusFromInProgressToPending() {
 
-        FocusSession existingSession = TestDataFactory.createFocusSession(1L);
-        Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EFocusSessionStatus.PENDING, existingSession));
+        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+        Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EStatus.PENDING, existingSession));
     }
 
     @Test
-    public void shouldAllowTransitionStatusFromInProgressToDoneOrCancelled() {
+    public void shouldAllowTransitionStatusFromInProgressToDone() {
 
-        FocusSession existingSession = TestDataFactory.createFocusSession(1L);
-        Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EFocusSessionStatus.DONE, existingSession));
-        Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EFocusSessionStatus.CANCELLED, existingSession));
+        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+        Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EStatus.DONE, existingSession));
     }
 
     @Test
     public void shouldThrowExceptionIfTryingToChangeDoneStatusToAnyStatus() {
 
-        FocusSession existingSession = TestDataFactory.createFocusSession(1L);
-        existingSession.setStatus(EFocusSessionStatus.DONE);
-        assertThrowAllSessionStatus(existingSession);
-    }
-
-    @Test
-    public void shouldThrowExceptionIfTryingToChangeCancelledStatusToAnyStatus() {
-
-        FocusSession existingSession = TestDataFactory.createFocusSession(1L);
-        existingSession.setStatus(EFocusSessionStatus.CANCELLED);
+        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+        existingSession.setStatus(EStatus.DONE);
         assertThrowAllSessionStatus(existingSession);
     }
 
     private void assertThrowAllSessionStatus(FocusSession existingSession) {
         Assertions.assertThrows(FocusSessionStatusException.class,
-                () -> focusSessionStatusValidator.validateStatusTransition(EFocusSessionStatus.CANCELLED, existingSession));
+                () -> focusSessionStatusValidator.validateStatusTransition(EStatus.DONE, existingSession));
         Assertions.assertThrows(FocusSessionStatusException.class,
-                () -> focusSessionStatusValidator.validateStatusTransition(EFocusSessionStatus.DONE, existingSession));
+                () -> focusSessionStatusValidator.validateStatusTransition(EStatus.IN_PROGRESS, existingSession));
         Assertions.assertThrows(FocusSessionStatusException.class,
-                () -> focusSessionStatusValidator.validateStatusTransition(EFocusSessionStatus.IN_PROGRESS, existingSession));
-        Assertions.assertThrows(FocusSessionStatusException.class,
-                () -> focusSessionStatusValidator.validateStatusTransition(EFocusSessionStatus.PENDING, existingSession));
+                () -> focusSessionStatusValidator.validateStatusTransition(EStatus.PENDING, existingSession));
     }
 
 }

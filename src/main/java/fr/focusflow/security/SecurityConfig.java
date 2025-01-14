@@ -7,11 +7,11 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -22,12 +22,16 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+
+        String[] publicRequestMatchers = {"/api/v1/auth/login", "/api/v1/auth/signup", "/api/v1/auth/refresh", "/wsocket/**",
+                "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html"};
+
         http
-                .csrf(AbstractHttpConfigurer::disable)  // Désactiver CSRF uniquement pour ces routes
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers(publicRequestMatchers)) // Ignorer CSRF pour ces endpoints publics)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/signup", "/api/v1/auth/refresh", "/wsocket/**",
-                                "/swagger-ui/**", "/v3/api-docs/**").permitAll()  // Autoriser ces endpoints
+                        .requestMatchers(publicRequestMatchers).permitAll()  // Autoriser ces endpoints
                         .anyRequest().authenticated()  // Protéger les autres endpoints
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);  // Ajouter le filtre JWT avant UsernamePassword
