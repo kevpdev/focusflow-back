@@ -1,7 +1,9 @@
 package fr.focusflow.security;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -12,9 +14,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -23,18 +32,52 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
 
-        String[] publicRequestMatchers = {"/api/v1/auth/login", "/api/v1/auth/signup", "/api/v1/auth/refresh", "/wsocket/**",
-                "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html"};
+        // Chemins communs
+        List<String> commonRequestMatchers = Arrays.asList(
+                "/api/v1/auth/login",
+                "/api/v1/auth/signup",
+                "/api/v1/auth/refresh",
+                "/wsocket/**",
+                "/swagger-ui/**",
+                "/v3/api-docs/**",
+                "/swagger-ui.html"
+        );
+
+        // Public matchers
+        String[] publicRequestMatchers = commonRequestMatchers.toArray(String[]::new);
+
+        // CSRF matchers avec ajout dynamique
+        List<String> tempCsrfRequestMatchers = new ArrayList<>(commonRequestMatchers);
+        //  tempCsrfRequestMatchers.add("/api/v1/auth/logout");
+        tempCsrfRequestMatchers.add("/error");
+        String[] csrfRequestMatchers = tempCsrfRequestMatchers.toArray(String[]::new);
+
+        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfTokenRepository.setCookiePath("/");
+
+        CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
 
         http
-                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers(publicRequestMatchers)) // Ignorer CSRF pour ces endpoints publics)
+                .addFilterBefore(new CsrfDebugFilter(), CsrfFilter.class)
+                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository)
+                        .csrfTokenRequestHandler(requestHandler)
+                        .ignoringRequestMatchers(new AntPathRequestMatcher("/**", HttpMethod.OPTIONS.name()))
+                        .ignoringRequestMatchers(csrfRequestMatchers)) // Ignorer CSRF pour ces endpoints publics
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests((requests) -> requests
                         .requestMatchers(publicRequestMatchers).permitAll()  // Autoriser ces endpoints
                         .anyRequest().authenticated()  // Protéger les autres endpoints
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);  // Ajouter le filtre JWT avant UsernamePassword
+                .logout(logout -> logout
+                        .logoutUrl("/api/v1/auth/logout")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID", "XSRF-TOKEN", "accessToken", "refreshToken")
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            response.setStatus(HttpServletResponse.SC_OK);
+                        })
+                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
 
         return http.build();
     }
@@ -48,7 +91,6 @@ public class SecurityConfig {
         return new ProviderManager(daoAuthenticationProvider);
     }
 
-    // Ici on utilise BCrypt
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -57,7 +99,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.addAllowedOrigin("http://localhost:4200"); // Permettre les requêtes venant de ton front Angular
+        configuration.addAllowedOrigin("http://localhost:4200"); // Permettre les requêtes venant du front Angular
         configuration.addAllowedMethod("*"); // Autoriser toutes les méthodes (GET, POST, etc.)
         configuration.addAllowedHeader("*"); // Autoriser tous les headers
         configuration.setAllowCredentials(true); // Autoriser l'envoi de cookies si nécessaire

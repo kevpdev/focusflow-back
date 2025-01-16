@@ -17,6 +17,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -44,10 +46,13 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final RoleService roleService;
     private final AuthenticatedUserService authenticatedUserService;
+    private final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
     @Value("${jwt.token.expiration}")
     private String jwtTokenExpiration;
     @Value("${jwt.refresh.token.expiration}")
     private String jwtRefreshTokenExpiration;
+    @Value("${server.servlet.session.cookie.secure:true}")
+    private boolean isSecure;
 
     public AuthController(JwtTokenProvider jwtTokenProvider, AuthenticationManager authenticationManager,
                           UserService userService, PasswordEncoder passwordEncoder, RoleService roleService,
@@ -67,26 +72,32 @@ public class AuthController {
     })
     @PostMapping("/login")
     public ResponseEntity<UserResponseDTO> login(@RequestBody UserRequestDTO userRequestDTO, HttpServletRequest request) {
+
         Authentication authentication = authenticationManager
                 .authenticate(new UsernamePasswordAuthenticationToken(userRequestDTO.email(), userRequestDTO.password()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String accesToken = jwtTokenProvider.generateToken(userRequestDTO.email());
+        String accessToken = jwtTokenProvider.generateToken(userRequestDTO.email());
         String refreshToken = jwtTokenProvider.generateRefreshToken(userRequestDTO.email());
-        // Récupérer le CSRF Token
+
         CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 
-        ResponseCookie accessCookie = getAccessToken(accesToken);
-        ResponseCookie refreshCookie = getRefreshToken(refreshToken);
+        ResponseCookie csrfCookie = ResponseCookie.from("XSRF-TOKEN", csrfToken.getToken())
+                .path("/")
+                .httpOnly(false)
+                .secure(false)
+                .sameSite("Lax")
+                .build();
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.SET_COOKIE, accessCookie.toString());
-        headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        headers.add(HttpHeaders.SET_COOKIE, getAccessToken(accessToken).toString());
+        headers.add(HttpHeaders.SET_COOKIE, getRefreshToken(refreshToken).toString());
+        headers.add(HttpHeaders.SET_COOKIE, csrfCookie.toString());
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(new UserResponseDTO("Login successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles(), csrfToken));
+                .body(new UserResponseDTO("Login successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
     }
 
     @Operation(summary = "Generate a new access token", description = "Generate a new access token if refresh token is still valid.")
@@ -102,19 +113,18 @@ public class AuthController {
         if (jwtTokenProvider.validateToken(refreshToken)) {
             String email = jwtTokenProvider.getEmailFromToken(refreshToken);
             String newAccessToken = jwtTokenProvider.generateToken(email);
-            CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 
             ResponseCookie accessCookie = ResponseCookie.from("accessToken", newAccessToken)
                     .httpOnly(true)
-                    .secure(true)
+                    .secure(isSecure)
                     .path("/")
                     .maxAge(Long.parseLong(jwtTokenExpiration))
-                    .sameSite("Strict")
+                    .sameSite("Lax")
                     .build();
 
             List<String> roles = authenticatedUserService.getAuthenticatedUserRoles();
 
-            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(new UserResponseDTO("refresh token successful !", email, roles, csrfToken));
+            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(new UserResponseDTO("refresh token successful !", email, roles));
         } else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -157,48 +167,29 @@ public class AuthController {
 
         String accesToken = jwtTokenProvider.generateToken(userRequestDTO.email());
         String refreshToken = jwtTokenProvider.generateRefreshToken(userRequestDTO.email());
-        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 
         ResponseCookie accessCookie = getAccessToken(accesToken);
         ResponseCookie refreshCookie = getRefreshToken(refreshToken);
+        ResponseCookie csrfCookie = getCsrfCookie(request);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, accessCookie.toString());
         headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        headers.add(HttpHeaders.SET_COOKIE, csrfCookie.toString());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .headers(headers)
-                .body(new UserResponseDTO("Sign up successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles(), csrfToken));
+                .body(new UserResponseDTO("Sign up successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
     }
 
-
-    @Operation(summary = "Log out the user", description = "Clears the authentication cookies to log out the user.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "User logged out successfully")
-    })
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        ResponseCookie deleteAccessCookie = ResponseCookie.from("accessToken", "")
-                .httpOnly(true)
-                .secure(true)
+    private ResponseCookie getCsrfCookie(HttpServletRequest request) {
+        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+        return ResponseCookie.from("XSRF-TOKEN", csrfToken.getToken())
                 .path("/")
-                .maxAge(0) // Delete immediately
-                .sameSite("Strict")
+                .httpOnly(false)
+                .secure(isSecure)
+                .sameSite("Lax")
                 .build();
-
-        ResponseCookie deleteRefreshCookie = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(0) // Delete immediately
-                .sameSite("Strict")
-                .build();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.SET_COOKIE, deleteAccessCookie.toString());
-        headers.add(HttpHeaders.SET_COOKIE, deleteRefreshCookie.toString());
-
-        return ResponseEntity.ok().headers(headers).build();
     }
 
 
@@ -211,11 +202,13 @@ public class AuthController {
     private ResponseCookie getAccessToken(String accesToken) {
         return ResponseCookie.from("accessToken", accesToken).
                 httpOnly(true)
-                .secure(true) // to force https connection
+                .secure(isSecure) // to force https connection
                 .path("/")
                 .maxAge(Long.parseLong(jwtTokenExpiration))
+                .sameSite("Lax")
                 .build();
     }
+
 
     /**
      * Get an JWT refresh  cookie
@@ -226,9 +219,10 @@ public class AuthController {
     private ResponseCookie getRefreshToken(String refreshToken) {
         return ResponseCookie.from("refreshToken", refreshToken).
                 httpOnly(true)
-                .secure(true) // to force https connection
+                .secure(isSecure) // to force https connection
                 .path("/")
                 .maxAge(Long.parseLong(jwtRefreshTokenExpiration))
+                .sameSite("Lax")
                 .build();
     }
 

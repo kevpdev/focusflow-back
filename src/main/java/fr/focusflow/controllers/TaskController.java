@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @SecurityRequirement(name = "bearerAuth")
@@ -66,10 +67,28 @@ public class TaskController {
     @Operation(summary = "Create a new task", description = "Creates a new task and returns it with its generated ID.")
     @ApiResponse(responseCode = "201", description = "Task successfully created")
     @PostMapping
-    public ResponseEntity<TaskDTO> saveTask(@RequestBody TaskDTO taskDTO) {
-        TaskDTO savedTask = taskService.save(taskDTO);
+    public ResponseEntity<TaskDTO> saveTask(@RequestBody TaskDTO taskDTO, Authentication authentication) {
+
+        // Récupération de l'utilisateur connecté
+        CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
+
+        // Construction de la nouvelle tâche avec l'userId
+        TaskDTO newTask = TaskDTO.builder()
+                .title(taskDTO.title())
+                .description(taskDTO.description())
+                .status(taskDTO.status())
+                .priority(taskDTO.priority())
+                .dueDate(taskDTO.dueDate())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .userId(currentUser.getId())  // Association de l'utilisateur
+                .build();
+
+        TaskDTO savedTask = taskService.save(newTask);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(savedTask);
     }
+
 
     @Operation(summary = "Update an existing task", description = "Updates the details of an existing task by its ID.")
     @ApiResponses(value = {
