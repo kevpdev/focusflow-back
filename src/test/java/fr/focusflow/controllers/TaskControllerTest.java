@@ -11,8 +11,11 @@ import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.security.SecurityConfig;
 import fr.focusflow.services.TaskService;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,8 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -61,13 +63,19 @@ class TaskControllerTest {
 
     private String authorizationHeader;
 
+    @Captor
+    private ArgumentCaptor<TaskDTO> taskDTOCaptor;
+
+    @Captor
+    private ArgumentCaptor<List<TaskDTO>> taskDTOListCaptor;
+
 
     @BeforeEach
     void setUp() {
 
         authorizationHeader = "Bearer eykds5fsdg55sf5sdf5sf5sdf5sf_fake_token";
 
-        // initialisatio context spring pour le bean authentication
+        // initialisation context spring pour le bean authentication
         TestDataFactory.setUpSecurityContext();
     }
 
@@ -76,16 +84,14 @@ class TaskControllerTest {
     @WithMockUser(username = "toto", roles = {"USER"})
     public void shouldReturnSavedNewTask() throws Exception {
 
-        TaskDTO taskRequestBody = TestDataFactory.createTaskDTO(null);
-        TaskDTO taskResponseBody = TestDataFactory.createTaskDTO(1L);
+        TaskDTO taskRequestBody = TestDataFactory.createTaskDTO(null); // Pas encore d'ID
+        TaskDTO taskResponseBody = TestDataFactory.createTaskDTO(1L); // La tâche sauvegardée avec un ID
 
-
-        // Simuler la réponse du service
+        // Mock du service
         when(taskService.save(any(TaskDTO.class))).thenReturn(taskResponseBody);
 
         String jsonRequestBody = TestUtil.objectToJsonMapper(taskRequestBody);
 
-        // Simulation appel rest controller
         mockMvc.perform(post(API_TASK)
                         .with(csrf())
                         .content(jsonRequestBody)
@@ -98,14 +104,21 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.status").value(taskResponseBody.status().name()))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty())
                 .andExpect(jsonPath("$.updatedAt").isNotEmpty())
-                .andExpect(jsonPath("$.userId").value("2"));
+                .andExpect(jsonPath("$.dueDate").isNotEmpty())
+                .andExpect(jsonPath("$.userId").value(taskResponseBody.userId()));
 
-        verify(taskService).save(argThat(task ->
-                task.title().equals(taskRequestBody.title()) &&
-                        task.description().equals(taskRequestBody.description()) &&
-                        task.priority().equals(taskRequestBody.priority()) &&
-                        task.status().equals(taskRequestBody.status())));
+        // Capture l'objet passé au service
+        verify(taskService).save(taskDTOCaptor.capture());
+        TaskDTO capturedTask = taskDTOCaptor.getValue();
+
+        // Assert sur l'objet capturé
+        Assertions.assertEquals(taskRequestBody.title(), capturedTask.title());
+        Assertions.assertEquals(taskRequestBody.description(), capturedTask.description());
+        Assertions.assertEquals(taskRequestBody.priority(), capturedTask.priority());
+        Assertions.assertEquals(taskRequestBody.status(), capturedTask.status());
+        Assertions.assertEquals(taskRequestBody.userId(), capturedTask.userId());
     }
+
 
     @Test
     @WithMockUser(username = "toto", roles = {"USER"})
@@ -167,9 +180,8 @@ class TaskControllerTest {
     @Test
     public void shouldReturnUpdatedTask() throws Exception {
 
-        Task task = TestDataFactory.createTask(1L, "Ranger la chambre", "Ranger la chambre avant le soir", EStatus.IN_PROGRESS, 3, TestDataFactory.createUser());
-        TaskDTO taskDTO = taskMapper.mapTaskToTaskDTO(task);
-        when(taskService.updateTask(1L, taskDTO)).thenReturn(taskDTO);
+        TaskDTO taskDTO = TestDataFactory.createTaskDTO(1L);
+        when(taskService.updateTask(anyLong(), any(TaskDTO.class))).thenReturn(taskDTO);
 
         mockMvc.perform(put(API_TASKS_ID, 1L)
                         .with(csrf())
@@ -177,13 +189,28 @@ class TaskControllerTest {
                         .header("Authorization", authorizationHeader)
                         .content(TestUtil.objectToJsonMapper(taskDTO)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("1"))
-                .andExpect(jsonPath("$.title").value("Ranger la chambre"))
-                .andExpect(jsonPath("$.description").value("Ranger la chambre avant le soir"))
-                .andExpect(jsonPath("$.priority").value("3"))
-                .andExpect(jsonPath("$.userId").value("2"));
+                .andExpect(jsonPath("$.id").value(taskDTO.id()))
+                .andExpect(jsonPath("$.title").value(taskDTO.title()))
+                .andExpect(jsonPath("$.description").value(taskDTO.description()))
+                .andExpect(jsonPath("$.status").value(taskDTO.status().name()))
+                .andExpect(jsonPath("$.priority").value(taskDTO.priority()))
+                .andExpect(jsonPath("$.dueDate").isNotEmpty())
+                .andExpect(jsonPath("$.updatedAt").isNotEmpty())
+                .andExpect(jsonPath("$.createdAt").isNotEmpty())
+                .andExpect(jsonPath("$.userId").value(taskDTO.userId()));
 
-        verify(taskService).updateTask(1L, taskDTO);
+        verify(taskService).updateTask(eq(1L), taskDTOCaptor.capture());
+        TaskDTO capturedTask = taskDTOCaptor.getValue();
+
+        Assertions.assertEquals(taskDTO.id(), capturedTask.id());
+        Assertions.assertEquals(taskDTO.title(), capturedTask.title());
+        Assertions.assertEquals(taskDTO.description(), capturedTask.description());
+        Assertions.assertEquals(taskDTO.status(), capturedTask.status());
+        Assertions.assertEquals(taskDTO.priority(), capturedTask.priority());
+        Assertions.assertEquals(taskDTO.updatedAt().toInstant(), capturedTask.updatedAt().toInstant());
+        Assertions.assertEquals(taskDTO.createdAt().toInstant(), capturedTask.createdAt().toInstant());
+        Assertions.assertEquals(taskDTO.dueDate().toInstant(), capturedTask.dueDate().toInstant());
+        Assertions.assertEquals(taskDTO.userId(), capturedTask.userId());
     }
 
     @Test
@@ -204,6 +231,7 @@ class TaskControllerTest {
     @Test
     public void shouldUpdateStatusOfAllTasks() throws Exception {
 
+
         List<Task> tasksToUpdate = TestDataFactory.createTaskList();
         tasksToUpdate.get(0).setStatus(EStatus.IN_PROGRESS);
         tasksToUpdate.get(1).setStatus(EStatus.DONE);
@@ -213,21 +241,34 @@ class TaskControllerTest {
                 .map(taskMapper::mapTaskToTaskDTO)
                 .toList();
 
+        // Mock du service
         when(taskService.updateStatusOfAllTasks(any())).thenReturn(modifiedTasksDTO);
+
+        String jsonRequestBody = TestUtil.objectToJsonMapper(modifiedTasksDTO);
 
         mockMvc.perform(put(API_TASK + "/status")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader)
-                        .content(TestUtil.objectToJsonMapper(modifiedTasksDTO)))
+                        .content(jsonRequestBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(modifiedTasksDTO.get(0).id()))
-                .andExpect(jsonPath("$[0].status").value(String.valueOf(EStatus.IN_PROGRESS)))
-
+                .andExpect(jsonPath("$[0].status").value(EStatus.IN_PROGRESS.name()))
                 .andExpect(jsonPath("$[1].id").value(modifiedTasksDTO.get(1).id()))
-                .andExpect(jsonPath("$[1].status").value(String.valueOf(EStatus.DONE)));
+                .andExpect(jsonPath("$[1].status").value(EStatus.DONE.name()));
 
-        verify(taskService).updateStatusOfAllTasks(modifiedTasksDTO);
+        // Capture les arguments passés au service
+        verify(taskService).updateStatusOfAllTasks(taskDTOListCaptor.capture());
+        List<TaskDTO> capturedTasks = taskDTOListCaptor.getValue();
+
+        // Assert sur les arguments capturés
+        Assertions.assertEquals(2, capturedTasks.size());
+
+        Assertions.assertEquals(modifiedTasksDTO.get(0).id(), capturedTasks.get(0).id());
+        Assertions.assertEquals(modifiedTasksDTO.get(0).status(), capturedTasks.get(0).status());
+
+        Assertions.assertEquals(modifiedTasksDTO.get(1).id(), capturedTasks.get(1).id());
+        Assertions.assertEquals(modifiedTasksDTO.get(1).status(), capturedTasks.get(1).status());
     }
 
 }
