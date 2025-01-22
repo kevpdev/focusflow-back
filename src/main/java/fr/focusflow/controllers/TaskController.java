@@ -17,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @SecurityRequirement(name = "bearerAuth")
@@ -79,8 +79,8 @@ public class TaskController {
                 .status(taskDTO.status())
                 .priority(taskDTO.priority())
                 .dueDate(taskDTO.dueDate())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(ZonedDateTime.now())
+                .updatedAt(ZonedDateTime.now())
                 .userId(currentUser.getId())  // Association de l'utilisateur
                 .build();
 

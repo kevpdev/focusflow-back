@@ -9,8 +9,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -133,9 +133,9 @@ public class TestDataFactory {
                 "Faire la vaisselle avant samedi",
                 EStatus.PENDING,
                 2,
-                LocalDate.now().plusDays(3),
-                LocalDateTime.now(),
-                LocalDateTime.now(),
+                ZonedDateTime.now().plusDays(3),
+                ZonedDateTime.now(),
+                ZonedDateTime.now(),
                 createUser().getId()
         );
     }
@@ -154,9 +154,9 @@ public class TestDataFactory {
                 "Faire la vaisselle avant samedi",
                 status,            // Statut personnalisé
                 2,                 // Priorité par défaut
-                LocalDate.now().plusDays(3),
-                LocalDateTime.now(),
-                LocalDateTime.now(),
+                ZonedDateTime.now().plusDays(3),
+                ZonedDateTime.now(),
+                ZonedDateTime.now(),
                 createUser().getId()
         );
     }

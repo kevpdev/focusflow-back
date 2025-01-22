@@ -104,9 +104,7 @@ public class TaskServiceImpl implements TaskService {
                 .collect(groupingBy(TaskDTO::status, Collectors.mapping(TaskDTO::id, Collectors.toList())));
 
         // Mettre à jour pour chaque liste
-        mapTaskByStatus.forEach((status, taskIdList) -> {
-            taskRepository.updateStatusOfAllTasks(String.valueOf(status), taskIdList);
-        });
+        mapTaskByStatus.forEach(taskRepository::updateStatusOfAllTasks);
 
         // récupération des taches
         List<Long> allTaskIdList = taskListToUpdate.stream().map(TaskDTO::id).toList();

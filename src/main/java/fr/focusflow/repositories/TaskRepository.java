@@ -20,7 +20,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Modifying
     @Query("UPDATE Task t SET t.status = :status WHERE t.id IN :taskIds")
-    int updateStatusOfAllTasks(@Param("status") String status, @Param("taskIds") List<Long> taskIds);
+    int updateStatusOfAllTasks(@Param("status") EStatus status, @Param("taskIds") List<Long> taskIds);
 
     @Query("SELECT t FROM Task t WHERE t.id IN :taskIds")
     List<Task> findTasksByIds(@Param("taskIds") List<Long> taskIds);

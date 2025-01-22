@@ -3,8 +3,7 @@ package fr.focusflow.dtos;
 import fr.focusflow.entities.EStatus;
 import lombok.Builder;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 public record TaskDTO(
         Long id,
@@ -12,9 +11,9 @@ public record TaskDTO(
         String description,
         EStatus status,
         Integer priority,
-        LocalDate dueDate,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt,
+        ZonedDateTime dueDate,
+        ZonedDateTime createdAt,
+        ZonedDateTime updatedAt,
         Long userId
 ) {
 
@@ -25,9 +24,9 @@ public record TaskDTO(
             String description,
             EStatus status,
             Integer priority,
-            LocalDate dueDate,
-            LocalDateTime createdAt,
-            LocalDateTime updatedAt,
+            ZonedDateTime dueDate,
+            ZonedDateTime createdAt,
+            ZonedDateTime updatedAt,
             Long userId) {
         return new TaskDTO(id, title, description, status, priority, dueDate, createdAt, updatedAt, userId);
     }

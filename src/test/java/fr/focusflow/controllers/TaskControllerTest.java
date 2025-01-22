@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -80,7 +81,7 @@ class TaskControllerTest {
 
 
         // Simuler la réponse du service
-        when(taskService.save(taskRequestBody)).thenReturn(taskResponseBody);
+        when(taskService.save(any(TaskDTO.class))).thenReturn(taskResponseBody);
 
         String jsonRequestBody = TestUtil.objectToJsonMapper(taskRequestBody);
 
@@ -96,9 +97,14 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.priority").value(taskResponseBody.priority()))
                 .andExpect(jsonPath("$.status").value(taskResponseBody.status().name()))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty())
+                .andExpect(jsonPath("$.updatedAt").isNotEmpty())
                 .andExpect(jsonPath("$.userId").value("2"));
 
-        verify(taskService).save(taskRequestBody);
+        verify(taskService).save(argThat(task ->
+                task.title().equals(taskRequestBody.title()) &&
+                        task.description().equals(taskRequestBody.description()) &&
+                        task.priority().equals(taskRequestBody.priority()) &&
+                        task.status().equals(taskRequestBody.status())));
     }
 
     @Test
