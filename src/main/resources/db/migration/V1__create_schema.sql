@@ -506,7 +506,7 @@ ALTER TABLE ONLY users.tasks
 -- Name: SCHEMA admin; Type: ACL; Schema: -; Owner: postgres
 --
 
-GRANT ALL ON SCHEMA admin TO focusflow_app;
+--GRANT ALL ON SCHEMA admin TO focusflow_app;
 
 
 
