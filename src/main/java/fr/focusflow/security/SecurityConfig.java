@@ -1,6 +1,7 @@
 package fr.focusflow.security;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,6 +29,9 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Value("${spring.security.allowed-origins}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
@@ -99,7 +103,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.addAllowedOrigin("http://localhost:4200"); // Permettre les requêtes venant du front Angular
+        configuration.addAllowedOrigin(allowedOrigins); // Permettre les requêtes venant du front Angular
         configuration.addAllowedMethod("*"); // Autoriser toutes les méthodes (GET, POST, etc.)
         configuration.addAllowedHeader("*"); // Autoriser tous les headers
         configuration.setAllowCredentials(true); // Autoriser l'envoi de cookies si nécessaire

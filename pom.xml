@@ -122,7 +122,6 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>10.20.0</version>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -159,7 +158,19 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <configuration>
+                    <!--                    <url>${env.DATABASE_URL}</url>-->
+                    <!--                    <user>${env.DATABASE_USERNAME}</user>-->
+                    <!--                    <password>${env.DATABASE_PASSWORD}</password>-->
+                    <schemas>public</schemas>
+                    <locations>
+                        <location>filesystem:src/main/resources/db/migration</location>
+                    </locations>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
-
 </project>
