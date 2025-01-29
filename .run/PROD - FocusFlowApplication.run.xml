@@ -10,7 +10,7 @@
       <env name="SPRING_PROFILES_ACTIVE" value="prod" />
       <env name="JWT_TOKEN_EXPIRATION" value="900" />
       <env name="JWT_REFRESH_TOKEN_EXPIRATION" value="604800" />
-      <env name="SPRING_SECURITY_ALLOWED_ORIGINS" value="http://localhost:4200,http://localhost:3000,https://focusflow-back.onrender.com,https://focusflow-back-dev.onrender.com" />
+      <env name="SPRING_SECURITY_ALLOWED_ORIGINS" value="http://localhost:4200,http://localhost:3000,https://focusflow-front.onrender.com,https://focusflow-front-dev.onrender.com" />
     </envs>
     <option name="MAIN_CLASS_NAME" value="fr.focusflow.FocusflowApplication" />
     <module name="focusflow" />

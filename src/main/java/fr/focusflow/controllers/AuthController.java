@@ -53,6 +53,8 @@ public class AuthController {
     private String jwtRefreshTokenExpiration;
     @Value("${server.servlet.session.cookie.secure:true}")
     private boolean isSecure;
+    @Value("${server.servlet.session.cookie.same-site:None}")
+    private String sameSite;
 
     public AuthController(JwtTokenProvider jwtTokenProvider, AuthenticationManager authenticationManager,
                           UserService userService, PasswordEncoder passwordEncoder, RoleService roleService,
@@ -87,7 +89,7 @@ public class AuthController {
                 .path("/")
                 .httpOnly(false)
                 .secure(false)
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .build();
 
         HttpHeaders headers = new HttpHeaders();
@@ -119,7 +121,7 @@ public class AuthController {
                     .secure(isSecure)
                     .path("/")
                     .maxAge(Long.parseLong(jwtTokenExpiration))
-                    .sameSite("Lax")
+                    .sameSite(sameSite)
                     .build();
 
             List<String> roles = authenticatedUserService.getAuthenticatedUserRoles();
@@ -188,7 +190,7 @@ public class AuthController {
                 .path("/")
                 .httpOnly(false)
                 .secure(isSecure)
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .build();
     }
 
@@ -205,7 +207,7 @@ public class AuthController {
                 .secure(isSecure) // to force https connection
                 .path("/")
                 .maxAge(Long.parseLong(jwtTokenExpiration))
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .build();
     }
 
@@ -222,7 +224,7 @@ public class AuthController {
                 .secure(isSecure) // to force https connection
                 .path("/")
                 .maxAge(Long.parseLong(jwtRefreshTokenExpiration))
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .build();
     }
 
