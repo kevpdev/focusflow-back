@@ -1,9 +1,7 @@
 package fr.focusflow.entities;
 
-public enum EFocusSessionStatus {
-
+public enum EStatus {
     PENDING,
-    DONE,
     IN_PROGRESS,
-    CANCELLED
+    DONE
 }

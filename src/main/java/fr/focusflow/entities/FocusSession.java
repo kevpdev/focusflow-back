@@ -32,7 +32,7 @@ public class FocusSession {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private EFocusSessionStatus status = EFocusSessionStatus.IN_PROGRESS; // Valeurs possibles : PENDING, IN_PROGRESS, CANCELED, DONE
+    private EStatus status = EStatus.IN_PROGRESS; // Valeurs possibles : PENDING, IN_PROGRESS, CANCELED, DONE
 
     @ManyToOne
     @JoinColumn(name = "task_id", referencedColumnName = "id", nullable = false)

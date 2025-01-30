@@ -1,6 +1,6 @@
 package fr.focusflow.validations;
 
-import fr.focusflow.entities.EFocusSessionStatus;
+import fr.focusflow.entities.EStatus;
 import fr.focusflow.entities.FocusSession;
 import fr.focusflow.exceptions.FocusSessionStatusException;
 import org.springframework.stereotype.Component;
@@ -20,20 +20,19 @@ public class FocusSessionStatusValidator {
      * @param existingSession
      * @throws FocusSessionStatusException
      */
-    public void validateStatusTransition(EFocusSessionStatus newStatus, FocusSession existingSession) throws FocusSessionStatusException {
+    public void validateStatusTransition(EStatus newStatus, FocusSession existingSession) throws FocusSessionStatusException {
 
-        EFocusSessionStatus currentStatus = existingSession.getStatus();
+        EStatus currentStatus = existingSession.getStatus();
 
         switch (currentStatus) {
             case PENDING -> {
-                if (newStatus == EFocusSessionStatus.PENDING) {
+                if (newStatus == EStatus.PENDING) {
                     throw new FocusSessionStatusException(THE_SESSION_STATUS_IS_ALREADY + newStatus);
                 }
             }
             case DONE -> throw new FocusSessionStatusException(CANNOT_MARK_DONE_SESSION_AS + newStatus);
-            case CANCELLED -> throw new FocusSessionStatusException(CANNOT_MARK_CANCELLED_SESSION_AS + newStatus);
             case IN_PROGRESS -> {
-                if (newStatus == EFocusSessionStatus.IN_PROGRESS) {
+                if (newStatus == EStatus.IN_PROGRESS) {
                     throw new FocusSessionStatusException(THE_SESSION_STATUS_IS_ALREADY + newStatus);
                 }
             }

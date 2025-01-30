@@ -4,6 +4,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Configuration;
@@ -36,6 +37,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             token = authorizationHeader.substring(7);
+        } else {
+            // Rechercher dans les cookies
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                    if ("accessToken".equals(cookie.getName())) {
+                        token = cookie.getValue();
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (token != null) {
             try {
                 username = jwtTokenProvider.getEmailFromToken(token);  // Extraire le nom d'utilisateur du token
             } catch (ExpiredJwtException e) {
@@ -46,6 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
         }
+
 
         // Si un nom d'utilisateur est extrait et que l'utilisateur n'est pas encore authentifié
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {

@@ -4,9 +4,13 @@ import fr.focusflow.entities.User;
 import fr.focusflow.repositories.UserRepository;
 import fr.focusflow.security.CustomUserDetails;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class AuthenticatedUserService {
@@ -17,16 +21,34 @@ public class AuthenticatedUserService {
         this.userRepository = userRepository;
     }
 
-    private String getAuthenticatedUserEmail() {
+    /**
+     * Get the email of an authenficated user
+     *
+     * @return an email in String format
+     */
+    public String getAuthenticatedUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
         return currentUser.getUsername();
     }
 
     /**
-     * Retourne l'utilisateur connecté
+     * Get roles of an anthenticated user
      *
-     * @return un objet User
+     * @return the roles in String List Format
+     */
+    public List<String> getAuthenticatedUserRoles() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
+        return currentUser.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get an authenticated user
+     *
+     * @return a user object
      */
     public User getAuthenticatedUser() {
         String email = getAuthenticatedUserEmail();

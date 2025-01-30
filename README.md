@@ -1,7 +1,7 @@
 # FocusFlow
 
 FocusFlow est une API REST qui aide les utilisateurs à organiser leurs tâches et à gérer des sessions de focus avec des
-statuts comme *PENDING*, *IN_PROGRESS*, *DONE*, et *CANCELLED*. Construit avec Spring Boot, l'application utilise JWT
+statuts comme *PENDING*, *IN_PROGRESS* et *DONE*. Construit avec Spring Boot, l'application utilise JWT
 pour l'authentification, WebSocket pour le suivi en temps réel, et inclut une documentation intégrée avec Swagger.
 
 ## Table des Matières
@@ -96,7 +96,6 @@ pour l'authentification, WebSocket pour le suivi en temps réel, et inclut une d
 - **PUT** `/api/v1/sessions/status/start` : Démarrer ou reprendre une session de focus.
 - **PUT** `/api/v1/sessions/status/pending/{sessionId}` : Marquer une session en attente.
 - **PUT** `/api/v1/sessions/status/done/{sessionId}` : Marquer une session comme terminée.
-- **PUT** `/api/v1/sessions/status/cancelled/{sessionId}` : Annuler une session.
 
 ### WebSocket
 

@@ -6,8 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 @Entity
 @Table(name = "tasks", schema = "users")
@@ -34,16 +33,30 @@ public class Task {
     @Enumerated(EnumType.STRING)
     // Utilise EnumType.STRING pour stocker la valeur de l'énumération comme chaîne de caractères
     @Column(length = 50, nullable = false)
-    private ETaskStatus status = ETaskStatus.PENDING;  // Valeur par défaut
+    private EStatus status = EStatus.PENDING;  // Valeur par défaut
 
     @Column(columnDefinition = "INT DEFAULT 1")
     private Integer priority = 1;
 
-    private LocalDate dueDate;
+    @Column(name = "due_date", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private ZonedDateTime dueDate;
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Builder.Default
+    @Column(name = "created_at", updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private ZonedDateTime createdAt = ZonedDateTime.now();
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Builder.Default
+    @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private ZonedDateTime updatedAt = ZonedDateTime.now();
+
+    @PrePersist
+    public void onCreate() {
+        createdAt = ZonedDateTime.now();
+        updatedAt = ZonedDateTime.now();
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = ZonedDateTime.now();
+    }
 }

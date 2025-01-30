@@ -1,7 +1,9 @@
 package fr.focusflow;
 
-import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
 /**
  * Classe utilitaire pour les tests
@@ -17,7 +19,11 @@ public class TestUtil {
      */
     public static String objectToJsonMapper(Object objectValue) {
 
-        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper()
+                .registerModule(new ParameterNamesModule())  // pour supporter les records
+                .registerModule(new JavaTimeModule())        // pour les dates (LocalDate, LocalDateTime)
+                .findAndRegisterModules();
+        ;
         try {
             return objectMapper.writeValueAsString(objectValue);
         } catch (JsonProcessingException e) {

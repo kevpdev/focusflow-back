@@ -1,5 +1,7 @@
 package fr.focusflow;
 
+import fr.focusflow.dtos.FocusSessionDTO;
+import fr.focusflow.dtos.TaskDTO;
 import fr.focusflow.entities.*;
 import fr.focusflow.security.CustomUserDetails;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -8,6 +10,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -17,38 +20,35 @@ import java.util.Set;
  */
 public class TestDataFactory {
 
+
+    private static User createUser(Long id, String username, String email, ERole role) {
+        return User.builder()
+                .id(id)
+                .username(username)
+                .email(email)
+                .roles(Set.of(Role.builder()
+                        .id(role == ERole.ADMIN ? 1L : 2L)
+                        .name(role.name())
+                        .build()))
+                .build();
+    }
+
     /**
      * Création d'un utilisateur avec le rôle user
      *
      * @return un objet utilisateur
      */
     public static User createUser() {
-        return User.builder()
-                .id(2L)
-                .username("toto")
-                .email("toto@gmail.com")
-                .roles(Set.of(Role.builder()
-                        .id(2L)
-                        .name(ERole.USER.name())
-                        .build()))
-                .build();
+        return createUser(2L, "toto", "toto@gmail.com", ERole.USER);
     }
 
     /**
-     * Création d'un utilisateur avec le role admin
+     * Création d'un utilisateur avec le rôle admin
      *
-     * @return un objet User
+     * @return un objet utilisateur
      */
     public static User createAdminUser() {
-        return User.builder()
-                .id(1L)
-                .username("admin")
-                .email("admin@gmail.com")
-                .roles(Set.of(Role.builder()
-                        .id(1L)
-                        .name(ERole.ADMIN.name())
-                        .build()))
-                .build();
+        return createUser(1L, "admin", "admin@gmail.com", ERole.ADMIN);
     }
 
     /**
@@ -58,32 +58,21 @@ public class TestDataFactory {
      * @param user
      * @return un objet Task
      */
-    public static Task createTask(Long id, User user) {
+    // 🔹 Générique pour les tâches
+    public static Task createTask(Long id, String title, String description, EStatus status, int priority, User user) {
         return Task.builder()
                 .id(id)
-                .title("Faire la vaisselle")
-                .description("Faire la vaisselle avant samedi")
-                .priority(2)
+                .title(title)
+                .description(description)
+                .priority(priority)
+                .status(status)
                 .user(user)
-                .status(ETaskStatus.PENDING)
                 .build();
     }
 
-    /**
-     * Creation d'une bodyRequest pour une tâche
-     *
-     * @return un objet Task
-     */
-    public static Task createRequestBodyTask() {
-        return Task.builder()
-                .title("Faire la vaisselle")
-                .description("Faire la vaisselle avant samedi")
-                .priority(2)
-                .user(createUser())
-                .status(ETaskStatus.PENDING)
-                .build();
+    public static Task createDefaultTask(Long id, User user) {
+        return createTask(id, "Faire la vaisselle", "Faire la vaisselle avant samedi", EStatus.PENDING, 2, user);
     }
-
 
     /**
      * Création d'une liste de deux tâches
@@ -92,15 +81,97 @@ public class TestDataFactory {
      */
     public static List<Task> createTaskList() {
         User user = createUser();
-        Task task1 = createTask(1L, user);
-        Task task2 = Task.builder()
-                .id(2L)
-                .title("Ranger la chambre")
-                .description("Ranger la chambre le dimanche")
-                .priority(2)
-                .user(user)
-                .build();
-        return List.of(task1, task2);
+        return List.of(
+                createDefaultTask(1L, user),
+                createTask(2L, "Ranger la chambre", "Ranger la chambre le dimanche", EStatus.PENDING, 2, user)
+        );
+    }
+
+    /**
+     * Creation d'une bodyRequest pour une tâche
+     *
+     * @return un objet Task
+     */
+    public static Task createRequestBodyTask() {
+        return createDefaultTask(null, createUser());
+    }
+
+    /**
+     * Conversion d'un objet Task en TaskDTO
+     *
+     * @param task l'entité Task
+     * @return l'objet TaskDTO
+     */
+    public static TaskDTO mapTaskToTaskDTO(Task task) {
+        if (task == null) {
+            return null;
+        }
+
+        return TaskDTO.create(
+                task.getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getStatus(),
+                task.getPriority(),
+                task.getDueDate(),
+                task.getCreatedAt(),
+                task.getUpdatedAt(),
+                task.getUser() != null ? task.getUser().getId() : null
+        );
+    }
+
+    /**
+     * Création directe d'un TaskDTO avec des données par défaut
+     *
+     * @param id l'identifiant de la tâche
+     * @return un objet TaskDTO
+     */
+    public static TaskDTO createTaskDTO(Long id) {
+        return TaskDTO.create(
+                id,
+                "Faire la vaisselle",
+                "Faire la vaisselle avant samedi",
+                EStatus.PENDING,
+                2,
+                ZonedDateTime.now().plusDays(3),
+                ZonedDateTime.now(),
+                ZonedDateTime.now(),
+                createUser().getId()
+        );
+    }
+
+    /**
+     * Création d'un TaskDTO avec un ID et un statut spécifique.
+     *
+     * @param id     l'identifiant de la tâche
+     * @param status le statut personnalisé de la tâche
+     * @return un objet TaskDTO avec l'ID et le statut spécifié
+     */
+    public static TaskDTO createTaskDTO(Long id, EStatus status) {
+        return TaskDTO.create(
+                id,
+                "Faire la vaisselle",
+                "Faire la vaisselle avant samedi",
+                status,            // Statut personnalisé
+                2,                 // Priorité par défaut
+                ZonedDateTime.now().plusDays(3),
+                ZonedDateTime.now(),
+                ZonedDateTime.now(),
+                createUser().getId()
+        );
+    }
+
+
+    /**
+     * Création d'une liste de deux TaskDTO
+     *
+     * @return une liste de deux TaskDTO
+     */
+    public static List<TaskDTO> createTaskDTOList() {
+        return List.of(
+                createTaskDTO(1L),
+                createTaskDTO(2L)
+        );
     }
 
 
@@ -117,21 +188,61 @@ public class TestDataFactory {
     }
 
     /**
-     * Création d'un objet FocusSession
+     * Création d'un objet FocusSession à partir d'un objet DTO
      *
-     * @param id
+     * @param focusSessionDTO DTO contenant les données de la session
      * @return objet FocusSession
      */
-    public static FocusSession createFocusSession(Long id) {
-        User user = createUser();
-        Task task = createTask(1L, user);
+    public static FocusSession createFocusSession(FocusSessionDTO focusSessionDTO) {
+        return createFocusSession(focusSessionDTO, createUser());
+    }
+
+    /**
+     * Création d'un objet FocusSession avec un utilisateur spécifique
+     *
+     * @param focusSessionDTO DTO contenant les données de la session
+     * @param user            utilisateur associé à la session
+     * @return objet FocusSession
+     */
+    public static FocusSession createFocusSession(FocusSessionDTO focusSessionDTO, User user) {
         return FocusSession.builder()
+                .id(focusSessionDTO.id())
                 .user(user)
-                .task(task)
+                .task(createDefaultTask(focusSessionDTO.id(), user))
+                .status(focusSessionDTO.status())
+                .sessionStart(focusSessionDTO.sessionStart())
+                .createdAt(focusSessionDTO.createdAt())
+                .build();
+    }
+
+    /**
+     * Création d'un objet FocusSessionDTO avec un statut par défaut (IN_PROGRESS)
+     *
+     * @param id identifiant de la session
+     * @return objet FocusSessionDTO
+     */
+    public static FocusSessionDTO createFocusSessionDTO(Long id) {
+        return createFocusSessionDTO(id, EStatus.IN_PROGRESS);
+    }
+
+    /**
+     * Création d'un objet FocusSessionDTO avec un statut personnalisé
+     *
+     * @param id     identifiant de la session
+     * @param status statut de la session
+     * @return objet FocusSessionDTO
+     */
+    public static FocusSessionDTO createFocusSessionDTO(Long id, EStatus status) {
+        User user = createUser();
+        return FocusSessionDTO.builder()
                 .id(id)
-                .status(EFocusSessionStatus.IN_PROGRESS)
+                .userId(user.getId())
+                .taskId(1L)
+                .status(status)
                 .sessionStart(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();
     }
+
+
 }

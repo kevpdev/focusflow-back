@@ -2,8 +2,9 @@ package fr.focusflow.controllers;
 
 import fr.focusflow.TestDataFactory;
 import fr.focusflow.TestUtil;
+import fr.focusflow.dtos.FocusSessionDTO;
 import fr.focusflow.dtos.FocusSessionRequestDTO;
-import fr.focusflow.entities.EFocusSessionStatus;
+import fr.focusflow.entities.EStatus;
 import fr.focusflow.entities.FocusSession;
 import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
@@ -16,10 +17,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockCookie;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -67,22 +70,23 @@ class FocusSessionControllerTest {
      * @throws Exception
      */
     private void shouldStartOrResumeSession(Long sessionId) throws Exception {
-        FocusSession focusSession = TestDataFactory.createFocusSession(sessionId);
-        focusSession.setId(1L);
+        FocusSession focusSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(sessionId);
 
-        when(focusSessionService.startOrResumeSession(1L, sessionId)).thenReturn(focusSession);
+        when(focusSessionService.startOrResumeSession(focusSession.getTask().getId(), sessionId)).thenReturn(focusSessionDTO);
 
 
         FocusSessionRequestDTO focusSessionRequestDTO = new FocusSessionRequestDTO(1L, sessionId);
         String jsonContent = TestUtil.objectToJsonMapper(focusSessionRequestDTO);
 
         mockMvc.perform(put("/api/v1/sessions/status/start")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonContent)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(focusSession.getId()))
-                .andExpect(jsonPath("$.status").value(EFocusSessionStatus.IN_PROGRESS.name()));
+                .andExpect(jsonPath("$.id").value(focusSessionDTO.id()))
+                .andExpect(jsonPath("$.status").value(EStatus.IN_PROGRESS.name()));
 
         verify(focusSessionService).startOrResumeSession(1L, sessionId);
     }
@@ -91,17 +95,17 @@ class FocusSessionControllerTest {
     public void shouldMarkSessionAsPending() throws Exception {
 
         Long sessionId = 1L;
-        FocusSession focusSession = TestDataFactory.createFocusSession(sessionId);
-        focusSession.setStatus(EFocusSessionStatus.PENDING);
+        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(sessionId, EStatus.PENDING);
 
-        when(focusSessionService.markFocusSessionAsPending(sessionId)).thenReturn(focusSession);
+        when(focusSessionService.markFocusSessionAsPending(sessionId)).thenReturn(focusSessionDTO);
 
         mockMvc.perform(put("/api/v1/sessions/status/pending/{sessionId}", sessionId)
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(sessionId))
-                .andExpect(jsonPath("$.status").value(EFocusSessionStatus.PENDING.name()));
+                .andExpect(jsonPath("$.status").value(EStatus.PENDING.name()));
 
         verify(focusSessionService).markFocusSessionAsPending(sessionId);
     }
@@ -110,38 +114,21 @@ class FocusSessionControllerTest {
     public void shouldMarkSessionAsDone() throws Exception {
 
         Long sessionId = 1L;
-        FocusSession focusSession = TestDataFactory.createFocusSession(sessionId);
-        focusSession.setStatus(EFocusSessionStatus.DONE);
+        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(sessionId, EStatus.DONE);
 
-        when(focusSessionService.markFocusSessionAsDone(sessionId)).thenReturn(focusSession);
+        when(focusSessionService.markFocusSessionAsDone(sessionId)).thenReturn(focusSessionDTO);
 
-        mockMvc.perform(put("/api/v1/sessions/status/done/{id}", sessionId)
+        MockCookie accessTokenCookie = new MockCookie("accessToken", "fake_secret_jwt_GFHjF7GkJrZeR7bLxXBtZZtS");
+
+        mockMvc.perform(put("/api/v1/sessions/status/done/{sessionId}", sessionId)
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", authorizationHeader))
+                        .cookie(accessTokenCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(sessionId))
-                .andExpect(jsonPath("$.status").value(EFocusSessionStatus.DONE.name()));
+                .andExpect(jsonPath("$.status").value(EStatus.DONE.name()));
 
         verify(focusSessionService).markFocusSessionAsDone(sessionId);
 
-    }
-
-    @Test
-    public void shouldMarkSessionAsCancelled() throws Exception {
-
-        Long sessionId = 1L;
-        FocusSession focusSession = TestDataFactory.createFocusSession(sessionId);
-        focusSession.setStatus(EFocusSessionStatus.CANCELLED);
-
-        when(focusSessionService.markFocusSessionAsCancelled(sessionId)).thenReturn(focusSession);
-
-        mockMvc.perform(put("/api/v1/sessions/status/cancelled/{id}", sessionId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", authorizationHeader))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(sessionId))
-                .andExpect(jsonPath("$.status").value(EFocusSessionStatus.CANCELLED.name()));
-
-        verify(focusSessionService).markFocusSessionAsCancelled(sessionId);
     }
 }

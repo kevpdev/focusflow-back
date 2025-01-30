@@ -1,11 +1,13 @@
 package fr.focusflow.controllers;
 
+import fr.focusflow.TestDataFactory;
 import fr.focusflow.entities.ERole;
 import fr.focusflow.entities.Role;
 import fr.focusflow.entities.User;
 import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.security.SecurityConfig;
+import fr.focusflow.services.AuthenticatedUserService;
 import fr.focusflow.services.RoleService;
 import fr.focusflow.services.UserService;
 import org.junit.jupiter.api.Assertions;
@@ -19,6 +21,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,9 +35,9 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Import(SecurityConfig.class)
 @WebMvcTest(AuthController.class)
@@ -47,6 +50,7 @@ class AuthControllerTest {
     private String email;
     private String password;
     private String token;
+    private String refreshToken;
     private String username;
     private String jsonLogin;
     private String wrongJsonLogin;
@@ -63,6 +67,8 @@ class AuthControllerTest {
     @MockBean
     private RoleService roleService;
     @MockBean
+    private AuthenticatedUserService authenticatedUserService;
+    @MockBean
     private PasswordEncoder passwordEncoder;
     @MockBean
     private AuthenticationManager authenticationManager;
@@ -73,6 +79,7 @@ class AuthControllerTest {
         password = "123456";
         username = "toto";
         token = "fake-token";
+        refreshToken = "fake-reresh-token";
         jsonLogin = "{\"email\": \"" + email + "\", \"password\": \"" + password + "\"}";
         wrongJsonLogin = "{\"email\" : \"wrong@gmail.com\", \"password\" : \"wrongpassword\"}";
         jsonSignup = "{\"email\": \"" + email + "\", \"password\": \"" + password + "\",\"username\" : \"" + username + "\"}";
@@ -80,20 +87,26 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldLoginAndReturnJwt() throws Exception {
+    public void shouldLoginAndReturnJwtCookie() throws Exception {
 
-        logger.info("Debut should_return_jwt_when_user_has_logged_test");
+        logger.info("Debut shouldLoginAndReturnJwtCookie");
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
+        when(jwtTokenProvider.generateRefreshToken(email)).thenReturn(refreshToken);
 
         mockLoginRequest(jsonLogin)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value(token));
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(cookie().exists("accessToken"))
+                .andExpect(cookie().exists("refreshToken"));
+
 
         verify(jwtTokenProvider).generateToken(email);
+        verify(jwtTokenProvider).generateRefreshToken(email);
 
 
-        logger.info("Fin should_return_jwt_when_user_has_logged_test");
+        logger.info("Fin shouldLoginAndReturnJwtCookie");
     }
 
     @Test
@@ -110,7 +123,7 @@ class AuthControllerTest {
 
         String responsBody = mvcResult.getResponse().getContentAsString();
         logger.info("Login unauthorized, received response : " + responsBody);
-        
+
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
 
         logger.info("Fin shouldFailLoginWithInvalidCredentials");
@@ -129,13 +142,13 @@ class AuthControllerTest {
     }
 
     private ResultActions mockSignupRequest(String jsonRequest) throws Exception {
-        return mockMvc.perform(post("/api/v1/signup")
+        return mockMvc.perform(post("/api/v1/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonRequest));
     }
 
     private ResultActions mockLoginRequest(String jsonRequest) throws Exception {
-        return mockMvc.perform(post("/api/v1/login")
+        return mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonRequest));
     }
@@ -177,15 +190,19 @@ class AuthControllerTest {
         mockDefaultRole();
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
+        when(jwtTokenProvider.generateRefreshToken(email)).thenReturn(refreshToken);
 
         // mock appel REST Signup
         mockSignupRequest(jsonSignup)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value(token));
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(cookie().exists("accessToken"))
+                .andExpect(cookie().exists("refreshToken"));
 
-        verify(jwtTokenProvider).generateToken(email);
         verify(userService).existByEmail(email);
         verify(jwtTokenProvider).generateToken(email);
+        verify(jwtTokenProvider).generateRefreshToken(email);
     }
 
     @Test
@@ -197,11 +214,16 @@ class AuthControllerTest {
         mockDefaultRole();
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
+        when(jwtTokenProvider.generateRefreshToken(email)).thenReturn(refreshToken);
 
         // mock appel REST Signup
         mockSignupRequest(jsonSignup)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value(token));
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(cookie().exists("accessToken"))
+                .andExpect(cookie().exists("refreshToken"));
+
 
         // Capture des arguments passés à userService.save
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -215,7 +237,7 @@ class AuthControllerTest {
 
         verify(userService).existByEmail(email);
         verify(jwtTokenProvider).generateToken(email);
-        verify(jwtTokenProvider).generateToken(email);
+        verify(jwtTokenProvider).generateRefreshToken(email);
 
     }
 
@@ -250,6 +272,34 @@ class AuthControllerTest {
         mockSignupRequest(invalidRequestParam)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.details.username").value("Le nom d'utilisateur ne peut pas être vide"));
+    }
+
+    @Test
+    public void testIsAuthenticatedWithCookie() throws Exception {
+
+        // initialisatio context spring pour le bean authentication
+        TestDataFactory.setUpSecurityContext();
+
+        MockCookie accessTokenCookie = new MockCookie("accessToken", "fake_secret_jwt_GFHjF7GkJrZeR7bLxXBtZZtS");
+
+        mockMvc.perform(get("/api/v1/auth/isAuthenticated")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .cookie(accessTokenCookie))
+                .andExpect(status().isOk())
+                .andExpect(content().string("true"));
+    }
+
+    @Test
+    public void testIsAuthenticatedWithBearer() throws Exception {
+
+        // initialisatio context spring pour le bean authentication
+        TestDataFactory.setUpSecurityContext();
+
+        mockMvc.perform(get("/api/v1/auth/isAuthenticated")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer fake_secret_jwt_GFHjF7GkJrZeR7bLxXBtZZtS"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("true"));
     }
 
 }

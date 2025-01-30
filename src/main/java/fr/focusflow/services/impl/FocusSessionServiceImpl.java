@@ -1,13 +1,15 @@
 package fr.focusflow.services.impl;
 
+import fr.focusflow.dtos.FocusSessionDTO;
 import fr.focusflow.dtos.SessionTimeInfoDTO;
-import fr.focusflow.entities.EFocusSessionStatus;
+import fr.focusflow.entities.EStatus;
 import fr.focusflow.entities.FocusSession;
 import fr.focusflow.entities.Task;
 import fr.focusflow.entities.User;
 import fr.focusflow.exceptions.FocusSessionNotFoundException;
 import fr.focusflow.exceptions.FocusSessionStatusException;
 import fr.focusflow.exceptions.TaskNotFoundException;
+import fr.focusflow.mappers.FocusSessionMapper;
 import fr.focusflow.repositories.FocusSessionRepository;
 import fr.focusflow.repositories.TaskRepository;
 import fr.focusflow.services.AuthenticatedUserService;
@@ -31,15 +33,18 @@ public class FocusSessionServiceImpl implements FocusSessionService {
     private final TaskRepository taskRepository;
     private final AuthenticatedUserService authenticatedUserService;
     private final FocusSessionStatusValidator focusSessionStatusValidator;
+    private final FocusSessionMapper focusSessionMapper;
 
     public FocusSessionServiceImpl(FocusSessionRepository focusSessionRepository,
                                    TaskRepository taskRepository,
                                    AuthenticatedUserService authenticatedUserService,
-                                   FocusSessionStatusValidator focusSessionStatusValidator) {
+                                   FocusSessionStatusValidator focusSessionStatusValidator,
+                                   FocusSessionMapper focusSessionMapper) {
         this.focusSessionRepository = focusSessionRepository;
         this.taskRepository = taskRepository;
         this.authenticatedUserService = authenticatedUserService;
         this.focusSessionStatusValidator = focusSessionStatusValidator;
+        this.focusSessionMapper = focusSessionMapper;
 
     }
 
@@ -48,13 +53,13 @@ public class FocusSessionServiceImpl implements FocusSessionService {
      *
      * @param taskId
      * @param sessionId
-     * @return FocusSessionObject
+     * @return a new FocusSessionDTO object
      * @throws TaskNotFoundException
      * @throws FocusSessionStatusException
      */
     @Transactional
     @Override
-    public FocusSession startOrResumeSession(Long taskId, Long sessionId) throws TaskNotFoundException, FocusSessionStatusException {
+    public FocusSessionDTO startOrResumeSession(Long taskId, Long sessionId) throws TaskNotFoundException, FocusSessionStatusException {
 
         if (sessionId == null) {
             return startNewSession(taskId);
@@ -73,10 +78,10 @@ public class FocusSessionServiceImpl implements FocusSessionService {
      * Start a new session by task ID
      *
      * @param taskId
-     * @return a new FocusSession object
+     * @return a new FocusSessionDTO object
      * @throws TaskNotFoundException
      */
-    private FocusSession startNewSession(Long taskId) throws TaskNotFoundException {
+    private FocusSessionDTO startNewSession(Long taskId) throws TaskNotFoundException {
         FocusSession focusSessionResponse;
 
         User user = authenticatedUserService.getAuthenticatedUser();
@@ -87,34 +92,33 @@ public class FocusSessionServiceImpl implements FocusSessionService {
         FocusSession newFocusSession = FocusSession.builder()
                 .user(user)
                 .task(task)
-                .status(EFocusSessionStatus.IN_PROGRESS)
+                .status(EStatus.IN_PROGRESS)
                 .build();
 
         focusSessionResponse = focusSessionRepository.save(newFocusSession);
 
-        return focusSessionResponse;
+        return focusSessionMapper.mapFocusSessionToFocusDTO(focusSessionResponse);
     }
 
     /**
      * Resumes an existing session that is in a pending state
      *
      * @param existingFocusSession
-     * @return
+     * @return a FocusSessionDTO object
      * @throws FocusSessionStatusException
      */
-    private FocusSession resumeExistingSession(FocusSession existingFocusSession) throws FocusSessionStatusException {
+    private FocusSessionDTO resumeExistingSession(FocusSession existingFocusSession) throws FocusSessionStatusException {
 
-        if (EFocusSessionStatus.IN_PROGRESS.equals(existingFocusSession.getStatus())) {
+        if (EStatus.IN_PROGRESS.equals(existingFocusSession.getStatus())) {
             throw new FocusSessionStatusException("The Session already in progress");
-        } else if (EFocusSessionStatus.DONE.equals(existingFocusSession.getStatus())
-                || EFocusSessionStatus.CANCELLED.equals(existingFocusSession.getStatus())) {
-            throw new FocusSessionStatusException("Session already done or canceled");
+        } else if (EStatus.DONE.equals(existingFocusSession.getStatus())) {
+            throw new FocusSessionStatusException("Session already done");
         } else {
 
         }
 
-        existingFocusSession.setStatus(EFocusSessionStatus.IN_PROGRESS);
-        return focusSessionRepository.save(existingFocusSession);
+        existingFocusSession.setStatus(EStatus.IN_PROGRESS);
+        return focusSessionMapper.mapFocusSessionToFocusDTO(focusSessionRepository.save(existingFocusSession));
     }
 
     /**
@@ -154,10 +158,10 @@ public class FocusSessionServiceImpl implements FocusSessionService {
      * Get all sessions by user ID
      *
      * @param userId
-     * @return FocusSession List
+     * @return FocusSessionDTO List
      */
     @Override
-    public List<FocusSession> getAllSessionByUser(Long userId) {
+    public List<FocusSessionDTO> getAllSessionByUser(Long userId) {
         return null;
     }
 
@@ -165,15 +169,15 @@ public class FocusSessionServiceImpl implements FocusSessionService {
      * Marks session status as PENDING
      *
      * @param sessionId Session ID
-     * @return FocusSession object after update
+     * @return FocusSessionDTO object after update
      */
     @Override
-    public FocusSession markFocusSessionAsPending(Long sessionId) throws FocusSessionNotFoundException, FocusSessionStatusException {
+    public FocusSessionDTO markFocusSessionAsPending(Long sessionId) throws FocusSessionNotFoundException, FocusSessionStatusException {
 
         FocusSession existingSession = focusSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new FocusSessionNotFoundException(THE_SESSION_IS_NOT_FOUND));
 
-        return updateCurrentSessionStatusWithNewStatus(existingSession, EFocusSessionStatus.PENDING);
+        return updateCurrentSessionStatusWithNewStatus(existingSession, EStatus.PENDING);
     }
 
 
@@ -181,34 +185,14 @@ public class FocusSessionServiceImpl implements FocusSessionService {
      * Mark session status as done
      *
      * @param sessionId
-     * @return a FocusSession object
+     * @return a FocusSessionDTO object
      */
     @Override
-    public FocusSession markFocusSessionAsDone(Long sessionId) throws FocusSessionNotFoundException, FocusSessionStatusException {
+    public FocusSessionDTO markFocusSessionAsDone(Long sessionId) throws FocusSessionNotFoundException, FocusSessionStatusException {
         FocusSession existingSession = focusSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new FocusSessionNotFoundException(THE_SESSION_IS_NOT_FOUND));
 
-        return updateCurrentSessionStatusWithNewStatus(existingSession, EFocusSessionStatus.DONE);
-    }
-
-    /**
-     * Marks session status as cancelled
-     *
-     * @param sessionId
-     * @return a udapted FocusSession object
-     */
-    @Override
-    public FocusSession markFocusSessionAsCancelled(Long sessionId) throws FocusSessionNotFoundException, FocusSessionStatusException {
-        FocusSession existingSession = focusSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new FocusSessionNotFoundException(THE_SESSION_IS_NOT_FOUND));
-
-        if (EFocusSessionStatus.CANCELLED.equals(existingSession.getStatus())) {
-            throw new FocusSessionStatusException("The session status is already cancelled");
-        }
-
-        existingSession.setStatus(EFocusSessionStatus.CANCELLED);
-
-        return focusSessionRepository.save(existingSession);
+        return updateCurrentSessionStatusWithNewStatus(existingSession, EStatus.DONE);
     }
 
     /**
@@ -220,10 +204,10 @@ public class FocusSessionServiceImpl implements FocusSessionService {
      * @return The updated FocusSession with the new status applied.
      * @throws FocusSessionStatusException
      */
-    private FocusSession updateCurrentSessionStatusWithNewStatus(FocusSession existingSession, EFocusSessionStatus newStatus) throws FocusSessionStatusException {
+    private FocusSessionDTO updateCurrentSessionStatusWithNewStatus(FocusSession existingSession, EStatus newStatus) throws FocusSessionStatusException {
         focusSessionStatusValidator.validateStatusTransition(newStatus, existingSession);
         existingSession.setStatus(newStatus);
-        return focusSessionRepository.save(existingSession);
+        return focusSessionMapper.mapFocusSessionToFocusDTO(focusSessionRepository.save(existingSession));
     }
 
     /**

@@ -1,15 +1,22 @@
 package fr.focusflow.services.impl;
 
-import fr.focusflow.entities.ETaskStatus;
+import fr.focusflow.dtos.TaskDTO;
+import fr.focusflow.entities.EStatus;
 import fr.focusflow.entities.Task;
 import fr.focusflow.exceptions.TaskNotFoundException;
 import fr.focusflow.mappers.TaskMapper;
 import fr.focusflow.repositories.TaskRepository;
 import fr.focusflow.services.TaskService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.groupingBy;
 
 @Service
 public class TaskServiceImpl implements TaskService {
@@ -27,13 +34,22 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public Task save(Task newTask) {
-        return taskRepository.save(newTask);
+    public TaskDTO save(TaskDTO newTaskDTO) {
+        Task newTask = taskMapper.mapTaskDTOToTask(newTaskDTO);
+        return taskMapper.mapTaskToTaskDTO(taskRepository.save(newTask));
     }
 
+    /**
+     * Find all tasks by status
+     *
+     * @param status
+     * @return Task List by status
+     */
     @Override
-    public List<Task> findAll() {
-        return taskRepository.findAll();
+    public List<TaskDTO> findAllTasksByUserIdAndStatus(Long userId, EStatus status) {
+        return taskRepository.findByUserIdAndStatus(userId, status)
+                .stream().map(taskMapper::mapTaskToTaskDTO)
+                .toList();
     }
 
     /**
@@ -43,23 +59,26 @@ public class TaskServiceImpl implements TaskService {
      * @return Task object List
      */
     @Override
-    public List<Task> getUserTasks(Long userId) {
-        return taskRepository.findByUserId(userId);
+    public List<TaskDTO> findAllTasksByUserId(Long userId) {
+        return taskRepository.findByUserId(userId)
+                .stream()
+                .map(taskMapper::mapTaskToTaskDTO)
+                .toList();
     }
 
     @Override
-    public Optional<Task> getTaskById(Long taskId) {
-        return taskRepository.findById(taskId);
+    public Optional<TaskDTO> findTaskById(Long taskId) {
+        return taskRepository.findById(taskId)
+                .map(taskMapper::mapTaskToTaskDTO);
     }
 
     @Override
-    public Task updateTask(Long id, Task task) throws TaskNotFoundException {
+    public TaskDTO updateTask(Long id, TaskDTO taskDTO) throws TaskNotFoundException {
 
         Task existingTask = taskRepository.findById(id).orElseThrow(() -> new TaskNotFoundException(TASK_NOT_FOUND_MESSAGE));
 
-        taskMapper.updateTask(task, existingTask);
-
-        return taskRepository.save(existingTask);
+        Task modifiedTask = taskMapper.updateTask(taskDTO, existingTask);
+        return taskMapper.mapTaskToTaskDTO(taskRepository.save(modifiedTask));
     }
 
     @Override
@@ -67,19 +86,32 @@ public class TaskServiceImpl implements TaskService {
         taskRepository.deleteById(id);
     }
 
+    /**
+     * @param taskListToUpdate
+     * @return
+     */
+    @Transactional
     @Override
-    public Task markTaskAsCompleted(Long id) throws TaskNotFoundException {
+    public List<TaskDTO> updateStatusOfAllTasks(List<TaskDTO> taskListToUpdate) {
 
-        Task existingTask = taskRepository.findById(id).orElseThrow(() -> new TaskNotFoundException(TASK_NOT_FOUND_MESSAGE));
-
-        if (ETaskStatus.DONE == existingTask.getStatus()) {
-            throw new IllegalArgumentException(TASK_ALREADY_COMPLETED);
+        if (taskListToUpdate == null || taskListToUpdate.isEmpty()) {
+            return Collections.emptyList();
         }
 
-        existingTask.setStatus(ETaskStatus.DONE);
+        //regrouper les taches par status
+        Map<EStatus, List<Long>> mapTaskByStatus = taskListToUpdate
+                .stream()
+                .collect(groupingBy(TaskDTO::status, Collectors.mapping(TaskDTO::id, Collectors.toList())));
 
-        return taskRepository.save(existingTask);
+        // Mettre à jour pour chaque liste
+        mapTaskByStatus.forEach(taskRepository::updateStatusOfAllTasks);
+
+        // récupération des taches
+        List<Long> allTaskIdList = taskListToUpdate.stream().map(TaskDTO::id).toList();
+
+        return taskRepository.findTasksByIds(allTaskIdList)
+                .stream().map(taskMapper::mapTaskToTaskDTO)
+                .toList();
     }
-
 
 }

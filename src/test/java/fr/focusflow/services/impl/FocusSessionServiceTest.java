@@ -1,14 +1,16 @@
 package fr.focusflow.services.impl;
 
 import fr.focusflow.TestDataFactory;
+import fr.focusflow.dtos.FocusSessionDTO;
 import fr.focusflow.dtos.SessionTimeInfoDTO;
-import fr.focusflow.entities.EFocusSessionStatus;
+import fr.focusflow.entities.EStatus;
 import fr.focusflow.entities.FocusSession;
 import fr.focusflow.entities.Task;
 import fr.focusflow.entities.User;
 import fr.focusflow.exceptions.FocusSessionNotFoundException;
 import fr.focusflow.exceptions.FocusSessionStatusException;
 import fr.focusflow.exceptions.TaskNotFoundException;
+import fr.focusflow.mappers.FocusSessionMapper;
 import fr.focusflow.repositories.FocusSessionRepository;
 import fr.focusflow.repositories.TaskRepository;
 import fr.focusflow.services.AuthenticatedUserService;
@@ -41,6 +43,9 @@ public class FocusSessionServiceTest {
     @Mock
     AuthenticatedUserService authenticatedUserService;
 
+    @Mock
+    FocusSessionMapper focusSessionMapper;
+
     @InjectMocks
     FocusSessionServiceImpl focusSessionService;
 
@@ -51,26 +56,31 @@ public class FocusSessionServiceTest {
         Long taskId = 1L;
 
         User user = TestDataFactory.createUser();
-        Task task = TestDataFactory.createTask(taskId, user);
+        Task task = TestDataFactory.createDefaultTask(taskId, user);
+
+
+        FocusSession focusSessionSaveResult =
+                TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(sessionId));
 
         // Mock taskRepository
         when(taskRepository.findById(taskId)).thenReturn(Optional.ofNullable(task));
 
-        // Mock authenticatedUserService
+        // Mock authenticatedUserService to get user info
         when(authenticatedUserService.getAuthenticatedUser()).thenReturn(user);
 
-        FocusSession focusSessionSaveResult = TestDataFactory.createFocusSession(1L);
+        when(focusSessionMapper.mapFocusSessionToFocusDTO(any(FocusSession.class)))
+                .thenReturn(TestDataFactory.createFocusSessionDTO(focusSessionSaveResult.getId()));
 
         // Mock focusSessionRepository save
         when(focusSessionRepository.save(any(FocusSession.class))).thenReturn(focusSessionSaveResult);
 
         // Call real focusSessionService
-        FocusSession focusSessionResponse = focusSessionService.startOrResumeSession(taskId, sessionId);
+        FocusSessionDTO focusSessionResponse = focusSessionService.startOrResumeSession(taskId, sessionId);
 
         Assertions.assertNotNull(focusSessionResponse);
-        Assertions.assertEquals(EFocusSessionStatus.IN_PROGRESS, focusSessionResponse.getStatus());
-        Assertions.assertEquals(user, focusSessionResponse.getUser());
-        Assertions.assertEquals(task, focusSessionResponse.getTask());
+        Assertions.assertEquals(EStatus.IN_PROGRESS, focusSessionResponse.status());
+        Assertions.assertEquals(user.getId(), focusSessionResponse.userId());
+        Assertions.assertEquals(taskId, focusSessionResponse.taskId());
 
         // verify that focusSessionRepository.findById was never called if session ID is null
         verify(focusSessionRepository, never()).findById(any());
@@ -86,7 +96,7 @@ public class FocusSessionServiceTest {
         Long sessionId = 1L;
         Long taskId = 1L;
 
-        FocusSession focusSessionSaveResult = TestDataFactory.createFocusSession(sessionId);
+        FocusSession focusSessionSaveResult = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(sessionId));
 
         // Mock focusSessionRepository save
         when(focusSessionRepository.findById(sessionId)).thenReturn(Optional.ofNullable(focusSessionSaveResult));
@@ -109,10 +119,10 @@ public class FocusSessionServiceTest {
         Long sessionId = 1L;
         Long taskId = 1L;
 
-        FocusSession existingFocusSession = TestDataFactory.createFocusSession(sessionId);
-        existingFocusSession.setStatus(EFocusSessionStatus.PENDING);
+        FocusSession existingFocusSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(sessionId));
+        existingFocusSession.setStatus(EStatus.PENDING);
 
-        FocusSession focusSessionSaveResult = TestDataFactory.createFocusSession(sessionId);
+        FocusSession focusSessionSaveResult = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(sessionId));
 
         // Mock focusSessionRepository findById
         when(focusSessionRepository.findById(sessionId)).thenReturn(Optional.of(existingFocusSession));
@@ -120,13 +130,16 @@ public class FocusSessionServiceTest {
         // Mock focusSessionRepository save
         when(focusSessionRepository.save(any(FocusSession.class))).thenReturn(focusSessionSaveResult);
 
+        when(focusSessionMapper.mapFocusSessionToFocusDTO(any(FocusSession.class)))
+                .thenReturn(TestDataFactory.createFocusSessionDTO(focusSessionSaveResult.getId()));
+
         // Call real focusSessionService
-        FocusSession focusSessionResponse = focusSessionService.startOrResumeSession(taskId, sessionId);
+        FocusSessionDTO focusSessionResponse = focusSessionService.startOrResumeSession(taskId, sessionId);
 
         Assertions.assertNotNull(focusSessionResponse);
-        Assertions.assertEquals(EFocusSessionStatus.IN_PROGRESS, focusSessionResponse.getStatus());
-        Assertions.assertEquals(2L, focusSessionResponse.getUser().getId());
-        Assertions.assertEquals(1L, focusSessionResponse.getTask().getId());
+        Assertions.assertEquals(EStatus.IN_PROGRESS, focusSessionResponse.status());
+        Assertions.assertEquals(2L, focusSessionResponse.userId());
+        Assertions.assertEquals(1L, focusSessionResponse.taskId());
 
 
         // verify that focusSessionRepository.findbyId was called
@@ -171,7 +184,7 @@ public class FocusSessionServiceTest {
             //mock session
             mockedStatic.when(LocalDateTime::now).thenReturn(tInstant);
 
-            FocusSession existingSession = TestDataFactory.createFocusSession(1L);
+            FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
             existingSession.setSessionStart(start);
             existingSession.setCreatedAt(start);
 
