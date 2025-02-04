@@ -25,7 +25,7 @@ public class FocusSessionController {
         this.focusSessionService = focusSessionService;
     }
 
-    @Operation(summary = "Start or resume a session", description = "Starts a new session if no sessionId is provided, or resumes an existing session if a valid sessionId is provided.")
+    @Operation(summary = "Start  a new session", description = "Starts a new session and deletes a potentially active session .")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Session started or resumed successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid session or task data provided"),
@@ -34,8 +34,7 @@ public class FocusSessionController {
     @PutMapping("/status/start")
     public ResponseEntity<FocusSessionDTO> startOrResumeSession(
             @RequestBody FocusSessionRequestDTO focusSessionRequestDTO) throws Exception {
-        FocusSessionDTO focusSession = focusSessionService.startOrResumeSession(focusSessionRequestDTO.taskId(),
-                focusSessionRequestDTO.sessionId());
+        FocusSessionDTO focusSession = focusSessionService.createFocusSession(focusSessionRequestDTO);
         return ResponseEntity.status(HttpStatus.OK).body(focusSession);
     }
 
@@ -53,6 +52,20 @@ public class FocusSessionController {
         return ResponseEntity.status(HttpStatus.OK).body(focusSession);
     }
 
+    @Operation(summary = "Mark session as in progress", description = "Marks a session's status as in progress.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Session marked as in progress successfully"),
+            @ApiResponse(responseCode = "404", description = "Session not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid status transition")
+    })
+    @PutMapping("/status/resume/{sessionId}")
+    public ResponseEntity<FocusSessionDTO> markSessionStatusAsInProgress(
+            @Parameter(description = "ID of the session to mark as in progress") @PathVariable Long sessionId)
+            throws FocusSessionNotFoundException, FocusSessionStatusException {
+        FocusSessionDTO focusSession = focusSessionService.markFocusSessionAsInProgress(sessionId);
+        return ResponseEntity.status(HttpStatus.OK).body(focusSession);
+    }
+
     @Operation(summary = "Mark session as done", description = "Marks a session's status as done.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Session marked as done successfully"),
@@ -66,5 +79,5 @@ public class FocusSessionController {
         FocusSessionDTO focusSession = focusSessionService.markFocusSessionAsDone(sessionId);
         return ResponseEntity.status(HttpStatus.OK).body(focusSession);
     }
-    
+
 }

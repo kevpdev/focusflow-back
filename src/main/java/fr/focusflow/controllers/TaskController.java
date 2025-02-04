@@ -10,8 +10,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,7 +24,6 @@ import java.util.List;
 public class TaskController {
 
     private final TaskService taskService;
-    private Logger logger = LoggerFactory.getLogger(LoggerFactory.class);
 
     public TaskController(TaskService taskService) {
         this.taskService = taskService;

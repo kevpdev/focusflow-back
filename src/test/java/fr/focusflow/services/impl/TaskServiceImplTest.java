@@ -61,7 +61,7 @@ class TaskServiceImplTest {
         // récuperer le retour
         TaskDTO savedTaskDTO = taskService.save(taskDTOToUpdate);
 
-        logger.info("Tache créée : " + savedTaskDTO);
+        logger.info("Tache créée : {}", savedTaskDTO);
 
         // assert non null et data
         Assertions.assertNotNull(savedTaskDTO);
@@ -77,7 +77,7 @@ class TaskServiceImplTest {
     }
 
     @Test
-    public void shouldFindAllTasks() {
+    void shouldFindAllTasks() {
 
         when(taskRepository.findByUserId(2L)).thenReturn(taskList);
         List<TaskDTO> taskDTOList = taskService.findAllTasksByUserId(2L);

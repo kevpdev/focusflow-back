@@ -2,13 +2,12 @@ package fr.focusflow.services.impl;
 
 import fr.focusflow.TestDataFactory;
 import fr.focusflow.dtos.FocusSessionDTO;
+import fr.focusflow.dtos.FocusSessionRequestDTO;
 import fr.focusflow.dtos.SessionTimeInfoDTO;
-import fr.focusflow.entities.EStatus;
 import fr.focusflow.entities.FocusSession;
-import fr.focusflow.entities.Task;
 import fr.focusflow.entities.User;
 import fr.focusflow.exceptions.FocusSessionNotFoundException;
-import fr.focusflow.exceptions.FocusSessionStatusException;
+import fr.focusflow.exceptions.FocusSessionRequestException;
 import fr.focusflow.exceptions.TaskNotFoundException;
 import fr.focusflow.mappers.FocusSessionMapper;
 import fr.focusflow.repositories.FocusSessionRepository;
@@ -23,14 +22,18 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class FocusSessionServiceTest {
+class FocusSessionServiceTest {
 
     static final Logger LOGGER = LoggerFactory.getLogger(FocusSessionServiceTest.class);
 
@@ -49,122 +52,182 @@ public class FocusSessionServiceTest {
     @InjectMocks
     FocusSessionServiceImpl focusSessionService;
 
+
     @Test
-    public void ShouldCreateSessionWhenSessionIdIsNull() throws Exception {
+    void shouldThrowExceptionWhenDurationIsLessThan1ForCreateFocusSessionMethod() {
+        //  Mocking data
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(1L, 0L);
 
-        Long sessionId = null;
-        Long taskId = 1L;
+        assertThrows(FocusSessionRequestException.class, () -> focusSessionService.createFocusSession(focusSessionRequestDTO));
+    }
 
-        User user = TestDataFactory.createUser();
-        Task task = TestDataFactory.createDefaultTask(taskId, user);
+    @Test
+    void shouldThrowExceptionWhenDurationIsNullForCreateFocusSessionMethod() {
+        //  Mocking data
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(1L, null);
+
+        assertThrows(FocusSessionRequestException.class, () -> focusSessionService.createFocusSession(focusSessionRequestDTO));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenDurationIsGreaterThan90ForCreateFocusSessionMethod() {
+        //  Mocking data
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(1L, 120L);
+
+        assertThrows(FocusSessionRequestException.class, () -> focusSessionService.createFocusSession(focusSessionRequestDTO));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenTaskIdIsNullForCreateFocusSessionMethod() {
+        //  Mocking data
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(null, 30L);
+
+        assertThrows(FocusSessionRequestException.class, () -> focusSessionService.createFocusSession(focusSessionRequestDTO));
+    }
+
+    @Test
+    void shouldCreateFocusSessionWhenActiveSessionNotFound() throws TaskNotFoundException, FocusSessionRequestException {
+
+        //  Mocking data
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(1L, 30L);
+        FocusSessionDTO focusSessionDTO = (TestDataFactory.createFocusSessionDTO(1L, 30L));
+        FocusSession focusSessionSaveResult = TestDataFactory.createFocusSession(focusSessionDTO);
+        User mockUser = TestDataFactory.createUser();
 
 
-        FocusSession focusSessionSaveResult =
-                TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(sessionId));
+        //Mocking methods calls in getActiveSessionByUserId method service
+        when(authenticatedUserService.getAuthenticatedUser()).thenReturn(mockUser);
+        when(focusSessionRepository.findSessionActiveByUserId(2L)).thenReturn(Optional.empty());
 
-        // Mock taskRepository
-        when(taskRepository.findById(taskId)).thenReturn(Optional.ofNullable(task));
-
-        // Mock authenticatedUserService to get user info
-        when(authenticatedUserService.getAuthenticatedUser()).thenReturn(user);
-
-        when(focusSessionMapper.mapFocusSessionToFocusDTO(any(FocusSession.class)))
-                .thenReturn(TestDataFactory.createFocusSessionDTO(focusSessionSaveResult.getId()));
-
-        // Mock focusSessionRepository save
+        //Mocking methods calls in startNewSession method service
+        when(taskRepository.findById(focusSessionRequestDTO.taskId())).thenReturn(Optional.ofNullable(TestDataFactory.createDefaultTask(1L, mockUser)));
         when(focusSessionRepository.save(any(FocusSession.class))).thenReturn(focusSessionSaveResult);
+        when(focusSessionMapper.mapFocusSessionToFocusDTO(any(FocusSession.class))).thenReturn(focusSessionDTO);
 
-        // Call real focusSessionService
-        FocusSessionDTO focusSessionResponse = focusSessionService.startOrResumeSession(taskId, sessionId);
 
-        Assertions.assertNotNull(focusSessionResponse);
-        Assertions.assertEquals(EStatus.IN_PROGRESS, focusSessionResponse.status());
-        Assertions.assertEquals(user.getId(), focusSessionResponse.userId());
-        Assertions.assertEquals(taskId, focusSessionResponse.taskId());
+        FocusSessionDTO result = focusSessionService.createFocusSession(focusSessionRequestDTO);
 
-        // verify that focusSessionRepository.findById was never called if session ID is null
-        verify(focusSessionRepository, never()).findById(any());
+        Assertions.assertEquals(focusSessionDTO, result);
 
-        // verify that focusSessionRepository.save was called
+        // Verifying that the methods were called
+        verify(authenticatedUserService).getAuthenticatedUser();
+        verify(focusSessionRepository).findSessionActiveByUserId(2L);
+        verify(taskRepository).findById(1L);
         verify(focusSessionRepository).save(any(FocusSession.class));
+        verify(focusSessionMapper).mapFocusSessionToFocusDTO(any(FocusSession.class));
 
     }
 
     @Test
-    public void ShouldThrowExceptionIFSessionStatusIsNotPending() throws FocusSessionStatusException, TaskNotFoundException {
+    void shouldCreateFocusSessionWhenActiveSessionIsDone() throws TaskNotFoundException, FocusSessionRequestException {
 
-        Long sessionId = 1L;
-        Long taskId = 1L;
+        //  Mocking data
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(1L, 30L);
+        FocusSessionDTO focusSessionDTO = (TestDataFactory.createFocusSessionDTO(1L, 30L));
+        FocusSession focusSessionSaveResult = TestDataFactory.createFocusSession(focusSessionDTO);
+        User mockUser = TestDataFactory.createUser();
 
-        FocusSession focusSessionSaveResult = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(sessionId));
 
-        // Mock focusSessionRepository save
-        when(focusSessionRepository.findById(sessionId)).thenReturn(Optional.ofNullable(focusSessionSaveResult));
+        //Mocking methods calls in getActiveSessionByUserId method service
+        when(authenticatedUserService.getAuthenticatedUser()).thenReturn(mockUser);
+        when(focusSessionRepository.findSessionActiveByUserId(2L)).thenReturn(Optional.ofNullable(TestDataFactory.createFocusSession(focusSessionDTO, mockUser)));
 
-        Assertions.assertThrowsExactly(FocusSessionStatusException.class, () -> {
-            focusSessionService.startOrResumeSession(taskId, sessionId);
+        //Mocking methods calls in startNewSession method service
+        when(taskRepository.findById(focusSessionRequestDTO.taskId())).thenReturn(Optional.ofNullable(TestDataFactory.createDefaultTask(1L, mockUser)));
+        when(focusSessionRepository.save(any(FocusSession.class))).thenReturn(focusSessionSaveResult);
+        when(focusSessionMapper.mapFocusSessionToFocusDTO(any(FocusSession.class))).thenReturn(focusSessionDTO);
+
+
+        FocusSessionDTO result = focusSessionService.createFocusSession(focusSessionRequestDTO);
+
+        Assertions.assertEquals(focusSessionDTO, result);
+
+        // Verifying that the methods were called
+        verify(authenticatedUserService).getAuthenticatedUser();
+        verify(focusSessionRepository).findSessionActiveByUserId(2L);
+        verify(taskRepository).findById(1L);
+        verify(focusSessionRepository, times(2)).save(any(FocusSession.class));
+        verify(focusSessionMapper).mapFocusSessionToFocusDTO(any(FocusSession.class));
+
+    }
+
+    @Test
+    void shouldThrowExceptionWhenTaskNotFound() {
+        //  Mocking data
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(1L, 30L);
+        User mockUser = TestDataFactory.createUser();
+        when(authenticatedUserService.getAuthenticatedUser()).thenReturn(mockUser);
+        when(focusSessionRepository.findSessionActiveByUserId(2L)).thenReturn(Optional.empty());
+        when(taskRepository.findById(1L)).thenReturn(Optional.empty());
+
+        // When
+
+        assertThrows(TaskNotFoundException.class, () -> focusSessionService.createFocusSession(focusSessionRequestDTO));
+
+        // Verifying that the methods were called
+        verify(authenticatedUserService).getAuthenticatedUser();
+        verify(focusSessionRepository).findSessionActiveByUserId(2L);
+        verify(taskRepository).findById(1L);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUserNotFound() {
+        //  Mocking data
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(1L, 30L);
+
+        //when authentication user throw exception
+        when(authenticatedUserService.getAuthenticatedUser()).thenThrow(new UsernameNotFoundException("User not found"));
+        assertThrows(UsernameNotFoundException.class, () -> focusSessionService.createFocusSession(focusSessionRequestDTO));
+
+        // Verifying that the methods were called
+        verify(authenticatedUserService).getAuthenticatedUser();
+
+    }
+
+    @Test
+    void shouldThrowDataAccessExceptionWhenFocusSessionRepositorySaveThrowException() {
+        //  Mocking data
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(1L, 30L);
+        User mockUser = TestDataFactory.createUser();
+
+        //Mocking methods calls in getActiveSessionByUserId method service
+        when(authenticatedUserService.getAuthenticatedUser()).thenReturn(mockUser);
+        when(focusSessionRepository.findSessionActiveByUserId(2L)).thenReturn(Optional.empty());
+
+        //Mocking methods calls in startNewSession method service
+        when(taskRepository.findById(focusSessionRequestDTO.taskId())).thenReturn(Optional.ofNullable(TestDataFactory.createDefaultTask(1L, mockUser)));
+        when(focusSessionRepository.save(any(FocusSession.class))).thenThrow(new DataAccessException("...") {
         });
 
-        // verify that focusSessionRepository.save was never called if session ID is null
-        verify(focusSessionRepository, never()).save(any(FocusSession.class));
+        assertThrows(DataAccessException.class, () -> focusSessionService.createFocusSession(focusSessionRequestDTO));
 
-        // verify that focusSessionRepository.findbyId was called
-        verify(focusSessionRepository).findById(sessionId);
-
-    }
-
-    @Test
-    public void ShouldResumeExistingSessionIfStatusIsPending() throws FocusSessionStatusException, TaskNotFoundException {
-
-        Long sessionId = 1L;
-        Long taskId = 1L;
-
-        FocusSession existingFocusSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(sessionId));
-        existingFocusSession.setStatus(EStatus.PENDING);
-
-        FocusSession focusSessionSaveResult = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(sessionId));
-
-        // Mock focusSessionRepository findById
-        when(focusSessionRepository.findById(sessionId)).thenReturn(Optional.of(existingFocusSession));
-
-        // Mock focusSessionRepository save
-        when(focusSessionRepository.save(any(FocusSession.class))).thenReturn(focusSessionSaveResult);
-
-        when(focusSessionMapper.mapFocusSessionToFocusDTO(any(FocusSession.class)))
-                .thenReturn(TestDataFactory.createFocusSessionDTO(focusSessionSaveResult.getId()));
-
-        // Call real focusSessionService
-        FocusSessionDTO focusSessionResponse = focusSessionService.startOrResumeSession(taskId, sessionId);
-
-        Assertions.assertNotNull(focusSessionResponse);
-        Assertions.assertEquals(EStatus.IN_PROGRESS, focusSessionResponse.status());
-        Assertions.assertEquals(2L, focusSessionResponse.userId());
-        Assertions.assertEquals(1L, focusSessionResponse.taskId());
-
-
-        // verify that focusSessionRepository.findbyId was called
-        verify(focusSessionRepository).findById(sessionId);
-
-
-        // verify that focusSessionRepository.save was called
+        // Verifying that the methods were called
+        verify(authenticatedUserService).getAuthenticatedUser();
+        verify(focusSessionRepository).findSessionActiveByUserId(2L);
+        verify(taskRepository).findById(1L);
         verify(focusSessionRepository).save(any(FocusSession.class));
 
     }
 
     @Test
-    public void shouldReturnElapsedSessionTimeInSecond() {
-        LocalDateTime start = LocalDateTime.of(2024, 10, 22, 18, 30, 0);
-        LocalDateTime tInstant = LocalDateTime.of(2024, 10, 22, 19, 0, 0);
+    void shouldReturnElapsedSessionTimeInSecond() {
+        ZonedDateTime tInstant = ZonedDateTime.of(
+                2025, 10, 22, 19, 30, 0, 0, ZoneId.of("Europe/Paris")
+        );
 
-        // Mocking LocalDateTime.now() to return the fixed time 'tInstant'
-        try (MockedStatic<LocalDateTime> mockedStatic = mockStatic(LocalDateTime.class)) {
-            mockedStatic.when(LocalDateTime::now).thenReturn(tInstant);
+        ZonedDateTime start = ZonedDateTime.of(
+                2025, 10, 22, 19, 0, 0, 0, ZoneId.of("Europe/Paris")
+        );
 
-            System.out.println("now (mocked): " + LocalDateTime.now());
+        // Mocking ZonedDateTime.now() to return the fixed time 'tInstant'
+        try (MockedStatic<ZonedDateTime> mockedStatic = mockStatic(ZonedDateTime.class)) {
+            mockedStatic.when(ZonedDateTime::now).thenReturn(tInstant);
+
+            System.out.println("now (mocked): " + ZonedDateTime.now());
             System.out.println("T instant: " + tInstant);
             System.out.println("session START : " + start);
 
-            Assertions.assertEquals(tInstant, LocalDateTime.now());
+            Assertions.assertEquals(tInstant, ZonedDateTime.now());
 
             Long result = focusSessionService.getElapsedSessionTimeInSecond(start);
 
@@ -174,17 +237,23 @@ public class FocusSessionServiceTest {
     }
 
     @Test
-    public void shouldReturnSessionInfoIfSessionExist() throws FocusSessionNotFoundException {
+    void shouldReturnSessionInfoIfSessionExist() throws FocusSessionNotFoundException {
 
-        LocalDateTime tInstant = LocalDateTime.of(2024, 10, 22, 19, 0, 0);
-        LocalDateTime start = LocalDateTime.of(2024, 10, 22, 18, 30, 0);
+        ZonedDateTime tInstant = ZonedDateTime.of(
+                2025, 10, 22, 19, 30, 0, 0, ZoneId.of("Europe/Paris")
+        );
 
-        try (MockedStatic<LocalDateTime> mockedStatic = mockStatic(LocalDateTime.class)) {
+        ZonedDateTime start = ZonedDateTime.of(
+                2025, 10, 22, 19, 0, 0, 0, ZoneId.of("Europe/Paris")
+        );
+
+
+        try (MockedStatic<ZonedDateTime> mockedStatic = mockStatic(ZonedDateTime.class)) {
 
             //mock session
-            mockedStatic.when(LocalDateTime::now).thenReturn(tInstant);
+            mockedStatic.when(ZonedDateTime::now).thenReturn(tInstant);
 
-            FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+            FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L, 60L));
             existingSession.setSessionStart(start);
             existingSession.setCreatedAt(start);
 
@@ -193,7 +262,7 @@ public class FocusSessionServiceTest {
 
             SessionTimeInfoDTO sessionTimeInfoDTO = focusSessionService.getSessionTimeInfo(1L);
 
-            System.out.println("now (mocked): " + LocalDateTime.now());
+            System.out.println("now (mocked): " + ZonedDateTime.now());
             System.out.println("T instant: " + tInstant);
             System.out.println("session START : " + sessionTimeInfoDTO.sessionStart());
 

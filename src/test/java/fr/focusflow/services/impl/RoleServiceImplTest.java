@@ -39,7 +39,7 @@ class RoleServiceImplTest {
 
 
     @Test
-    public void shouldReturnRoleByNameTest() {
+    void shouldReturnRoleByNameTest() {
 
         logger.info("Debut shouldReturnRoleByNameTest");
 

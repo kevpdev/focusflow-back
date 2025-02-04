@@ -82,7 +82,7 @@ class TaskControllerTest {
 
     @Test
     @WithMockUser(username = "toto", roles = {"USER"})
-    public void shouldReturnSavedNewTask() throws Exception {
+    void shouldReturnSavedNewTask() throws Exception {
 
         TaskDTO taskRequestBody = TestDataFactory.createTaskDTO(null); // Pas encore d'ID
         TaskDTO taskResponseBody = TestDataFactory.createTaskDTO(1L); // La tâche sauvegardée avec un ID
@@ -122,7 +122,7 @@ class TaskControllerTest {
 
     @Test
     @WithMockUser(username = "toto", roles = {"USER"})
-    public void shouldReturnTaskListByUserId() throws Exception {
+    void shouldReturnTaskListByUserId() throws Exception {
 
         List<TaskDTO> tasksDTObyUserId = TestDataFactory.createTaskDTOList();
 
@@ -151,7 +151,7 @@ class TaskControllerTest {
     }
 
     @Test
-    public void shouldReturnTaskById() throws Exception {
+    void shouldReturnTaskById() throws Exception {
 
         TaskDTO task = TestDataFactory.createTaskDTO(2L);
         when(taskService.findTaskById(any(Long.class))).thenReturn(Optional.of(task));
@@ -169,7 +169,7 @@ class TaskControllerTest {
     }
 
     @Test
-    public void shouldReturn404ErrorWhenTaskNotFound() throws Exception {
+    void shouldReturn404ErrorWhenTaskNotFound() throws Exception {
 
         mockMvc.perform(get(API_TASKS_ID, 2L)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -178,7 +178,7 @@ class TaskControllerTest {
     }
 
     @Test
-    public void shouldReturnUpdatedTask() throws Exception {
+    void shouldReturnUpdatedTask() throws Exception {
 
         TaskDTO taskDTO = TestDataFactory.createTaskDTO(1L);
         when(taskService.updateTask(anyLong(), any(TaskDTO.class))).thenReturn(taskDTO);
@@ -214,7 +214,7 @@ class TaskControllerTest {
     }
 
     @Test
-    public void shouldDeleteTask() throws Exception {
+    void shouldDeleteTask() throws Exception {
 
         Mockito.doNothing().when(taskService).deleteTask(1L);
 
@@ -229,7 +229,7 @@ class TaskControllerTest {
     }
 
     @Test
-    public void shouldUpdateStatusOfAllTasks() throws Exception {
+    void shouldUpdateStatusOfAllTasks() throws Exception {
 
 
         List<Task> tasksToUpdate = TestDataFactory.createTaskList();

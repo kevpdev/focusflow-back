@@ -2,12 +2,12 @@ package fr.focusflow.dtos;
 
 import lombok.Builder;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 
 @Builder
 public record SessionTimeInfoDTO(Long sessionId,
-                                 LocalDateTime sessionStart,
-                                 LocalDateTime sessionEnd,
+                                 ZonedDateTime sessionStart,
+                                 ZonedDateTime sessionEnd,
                                  Long elapsedTimeInSecond) {
 }

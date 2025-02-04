@@ -43,8 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(AuthController.class)
 class AuthControllerTest {
 
-    private final static String EMAIL_ALREADY_EXISTS_ERROR_MESSAGE = "Email already exists !";
-    private final static String ROLE_NOT_FOUND_ERROR_MESSAGE = "Role not found !";
+    private static final String EMAIL_ALREADY_EXISTS_ERROR_MESSAGE = "Email already exists !";
     private final Logger logger = LoggerFactory.getLogger(AuthControllerTest.class);
 
     private String email;
@@ -87,7 +86,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldLoginAndReturnJwtCookie() throws Exception {
+    void shouldLoginAndReturnJwtCookie() throws Exception {
 
         logger.info("Debut shouldLoginAndReturnJwtCookie");
 
@@ -110,7 +109,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldFailLoginWithInvalidCredentials() throws Exception {
+    void shouldFailLoginWithInvalidCredentials() throws Exception {
 
         logger.info("Debut shouldFailLoginWithInvalidCredentials");
 
@@ -122,7 +121,7 @@ class AuthControllerTest {
                 .andReturn();
 
         String responsBody = mvcResult.getResponse().getContentAsString();
-        logger.info("Login unauthorized, received response : " + responsBody);
+        logger.info("Login unauthorized, received response : {}", responsBody);
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
 
@@ -154,7 +153,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldThrowErrorWhenEmailAlreadyExists() throws Exception {
+    void shouldThrowErrorWhenEmailAlreadyExists() throws Exception {
 
         // Simuler qu'un utilisateur avec cet email existe déjà
         mockExistsEmail(true);
@@ -167,7 +166,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldRegisterUserWithDefaultRole() throws Exception {
+    void shouldRegisterUserWithDefaultRole() throws Exception {
 
         // Verification email n'existe pas
         mockExistsEmail(false);
@@ -181,7 +180,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldRegisterUserThenReturnJWT() throws Exception {
+    void shouldRegisterUserThenReturnJWT() throws Exception {
         // Verification email n'existe pas
 
         mockExistsEmail(false);
@@ -206,7 +205,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldRegisterUserWithHashedPassword() throws Exception {
+    void shouldRegisterUserWithHashedPassword() throws Exception {
         // Verification que l'email n'existe pas
         mockExistsEmail(false);
 
@@ -242,7 +241,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldThrowErrorWhenInvalidEmail() throws Exception {
+    void shouldThrowErrorWhenInvalidEmail() throws Exception {
 
         String invalidRequestParam = "{\"email\": \"invalid-email\", \"password\": \"" + password + "\",\"username\" : \"" + username + "\"}";
 
@@ -253,7 +252,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldThrowErrorWhenInvalidPassword() throws Exception {
+    void shouldThrowErrorWhenInvalidPassword() throws Exception {
 
         String invalidRequestParam = "{\"email\": \"" + email + "\", \"password\": \"\",\"username\" : \"" + username + "\"}";
 
@@ -264,7 +263,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldThrowErrorWhenInvalidUsername() throws Exception {
+    void shouldThrowErrorWhenInvalidUsername() throws Exception {
 
         String invalidRequestParam = "{\"email\": \"" + email + "\", \"password\": \"" + password + "\",\"username\" : \"\"}";
 
@@ -275,7 +274,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void testIsAuthenticatedWithCookie() throws Exception {
+    void testIsAuthenticatedWithCookie() throws Exception {
 
         // initialisatio context spring pour le bean authentication
         TestDataFactory.setUpSecurityContext();
@@ -290,7 +289,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void testIsAuthenticatedWithBearer() throws Exception {
+    void testIsAuthenticatedWithBearer() throws Exception {
 
         // initialisatio context spring pour le bean authentication
         TestDataFactory.setUpSecurityContext();

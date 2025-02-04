@@ -72,6 +72,7 @@ public class TaskServiceImpl implements TaskService {
                 .map(taskMapper::mapTaskToTaskDTO);
     }
 
+    @Transactional
     @Override
     public TaskDTO updateTask(Long id, TaskDTO taskDTO) throws TaskNotFoundException {
 
