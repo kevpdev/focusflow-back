@@ -25,14 +25,14 @@ public class FocusSessionController {
         this.focusSessionService = focusSessionService;
     }
 
-    @Operation(summary = "Start  a new session", description = "Starts a new session and deletes a potentially active session .")
+    @Operation(summary = "Create and start a new session", description = "Create and starts a new session and deletes a potentially active session .")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Session started or resumed successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid session or task data provided"),
             @ApiResponse(responseCode = "404", description = "Task or session not found")
     })
-    @PutMapping("/status/start")
-    public ResponseEntity<FocusSessionDTO> startOrResumeSession(
+    @PostMapping("/create")
+    public ResponseEntity<FocusSessionDTO> createFocusSession(
             @RequestBody FocusSessionRequestDTO focusSessionRequestDTO) throws Exception {
         FocusSessionDTO focusSession = focusSessionService.createFocusSession(focusSessionRequestDTO);
         return ResponseEntity.status(HttpStatus.OK).body(focusSession);

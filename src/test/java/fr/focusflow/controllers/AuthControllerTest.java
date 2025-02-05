@@ -1,14 +1,11 @@
 package fr.focusflow.controllers;
 
 import fr.focusflow.TestDataFactory;
-import fr.focusflow.entities.ERole;
-import fr.focusflow.entities.Role;
 import fr.focusflow.entities.User;
 import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.security.SecurityConfig;
 import fr.focusflow.services.AuthenticatedUserService;
-import fr.focusflow.services.RoleService;
 import fr.focusflow.services.UserService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,8 +26,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
-
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -63,8 +58,6 @@ class AuthControllerTest {
     private CustomUserDetailsService customUserDetailsService;
     @MockBean
     private UserService userService;
-    @MockBean
-    private RoleService roleService;
     @MockBean
     private AuthenticatedUserService authenticatedUserService;
     @MockBean
@@ -133,12 +126,6 @@ class AuthControllerTest {
         when(userService.existByEmail(email)).thenReturn(status);
     }
 
-    private void mockDefaultRole() {
-        Role role = Role.builder()
-                .name(ERole.USER.name())
-                .build();
-        when(roleService.findByName(ERole.USER.name())).thenReturn(Optional.of(role));
-    }
 
     private ResultActions mockSignupRequest(String jsonRequest) throws Exception {
         return mockMvc.perform(post("/api/v1/auth/signup")
@@ -171,9 +158,6 @@ class AuthControllerTest {
         // Verification email n'existe pas
         mockExistsEmail(false);
 
-        // mock du role par defaut
-        mockDefaultRole();
-
         // mock appel REST Signup
         mockSignupRequest(jsonSignup)
                 .andExpect(status().isCreated());
@@ -185,8 +169,6 @@ class AuthControllerTest {
 
         mockExistsEmail(false);
 
-        // mock du role par defaut
-        mockDefaultRole();
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
         when(jwtTokenProvider.generateRefreshToken(email)).thenReturn(refreshToken);
@@ -208,9 +190,6 @@ class AuthControllerTest {
     void shouldRegisterUserWithHashedPassword() throws Exception {
         // Verification que l'email n'existe pas
         mockExistsEmail(false);
-
-        // mock du role par defaut
-        mockDefaultRole();
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
         when(jwtTokenProvider.generateRefreshToken(email)).thenReturn(refreshToken);

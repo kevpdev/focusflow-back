@@ -52,8 +52,7 @@ public class SecurityConfig {
 
         // CSRF matchers avec ajout dynamique
         List<String> tempCsrfRequestMatchers = new ArrayList<>(commonRequestMatchers);
-        //  tempCsrfRequestMatchers.add("/api/v1/auth/logout");
-        tempCsrfRequestMatchers.add("/error");
+
         String[] csrfRequestMatchers = tempCsrfRequestMatchers.toArray(String[]::new);
 
         CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();

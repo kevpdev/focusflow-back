@@ -2,14 +2,11 @@ package fr.focusflow.controllers;
 
 import fr.focusflow.dtos.UserRequestDTO;
 import fr.focusflow.dtos.UserResponseDTO;
-import fr.focusflow.entities.ERole;
-import fr.focusflow.entities.Role;
 import fr.focusflow.entities.User;
 import fr.focusflow.exceptions.EmailAlreadyExistsException;
 import fr.focusflow.exceptions.RoleNotFoundException;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.services.AuthenticatedUserService;
-import fr.focusflow.services.RoleService;
 import fr.focusflow.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,12 +36,10 @@ import java.util.List;
 public class AuthController {
 
     private static final String EMAIL_ALREADY_EXISTS_ERROR_MESSAGE = "Email already exists !";
-    private static final String ROLE_NOT_FOUND_ERROR_MESSAGE = "Role not found !";
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final RoleService roleService;
     private final AuthenticatedUserService authenticatedUserService;
     private final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
     @Value("${jwt.token.expiration}")
@@ -57,13 +52,12 @@ public class AuthController {
     private String sameSite;
 
     public AuthController(JwtTokenProvider jwtTokenProvider, AuthenticationManager authenticationManager,
-                          UserService userService, PasswordEncoder passwordEncoder, RoleService roleService,
+                          UserService userService, PasswordEncoder passwordEncoder,
                           AuthenticatedUserService authenticatedUserService) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.authenticationManager = authenticationManager;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
-        this.roleService = roleService;
         this.authenticatedUserService = authenticatedUserService;
     }
 
@@ -99,7 +93,7 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(new UserResponseDTO("Login successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
+                .body(new UserResponseDTO("Login successful !", userRequestDTO.email()));
     }
 
     @Operation(summary = "Generate a new access token", description = "Generate a new access token if refresh token is still valid.")
@@ -126,7 +120,7 @@ public class AuthController {
 
             List<String> roles = authenticatedUserService.getAuthenticatedUserRoles();
 
-            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(new UserResponseDTO("refresh token successful !", email, roles));
+            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(new UserResponseDTO("refresh token successful !", email));
         } else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -156,14 +150,11 @@ public class AuthController {
             throw new EmailAlreadyExistsException(EMAIL_ALREADY_EXISTS_ERROR_MESSAGE);
         }
 
-        Role role = roleService.findByName(ERole.USER.name())
-                .orElseThrow(() -> new RoleNotFoundException(ROLE_NOT_FOUND_ERROR_MESSAGE));
 
         User newUser = new User();
         newUser.setEmail(userRequestDTO.email());
         newUser.setPassword(passwordEncoder.encode(userRequestDTO.password()));
         newUser.setUsername(userRequestDTO.username());
-        newUser.getRoles().add(role);
 
         userService.save(newUser);
 
@@ -181,7 +172,7 @@ public class AuthController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .headers(headers)
-                .body(new UserResponseDTO("Sign up successful !", userRequestDTO.email(), authenticatedUserService.getAuthenticatedUserRoles()));
+                .body(new UserResponseDTO("Sign up successful !", userRequestDTO.email()));
     }
 
     private ResponseCookie getCsrfCookie(HttpServletRequest request) {

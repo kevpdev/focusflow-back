@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -65,7 +66,7 @@ class FocusSessionControllerTest {
         // mocked service
         when(focusSessionService.createFocusSession(focusSessionRequestDTO)).thenReturn(focusSessionDTO);
 
-        mockMvc.perform(put("/api/v1/sessions/status/start")
+        mockMvc.perform(post("/api/v1/sessions/create")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonContent)

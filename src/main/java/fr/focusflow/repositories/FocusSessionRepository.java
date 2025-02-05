@@ -11,6 +11,6 @@ import java.util.Optional;
 @Repository
 public interface FocusSessionRepository extends JpaRepository<FocusSession, Long> {
 
-    @Query("SELECT fs FROM focus_sessions fs WHERE fs.user_id = :userId AND fs.status <> 'DONE'")
+    @Query("SELECT fs FROM FocusSession fs WHERE fs.user.id = :userId AND fs.status <> 'DONE'")
     Optional<FocusSession> findSessionActiveByUserId(@Param("userId") Long userId);
 }
