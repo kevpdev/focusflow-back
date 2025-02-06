@@ -2,18 +2,19 @@ package fr.focusflow;
 
 import fr.focusflow.dtos.FocusSessionDTO;
 import fr.focusflow.dtos.TaskDTO;
-import fr.focusflow.entities.*;
+import fr.focusflow.entities.EStatus;
+import fr.focusflow.entities.FocusSession;
+import fr.focusflow.entities.Task;
+import fr.focusflow.entities.User;
 import fr.focusflow.security.CustomUserDetails;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Classe de jeu de données pour les TU/TI
@@ -21,35 +22,23 @@ import java.util.Set;
 public class TestDataFactory {
 
 
-    private static User createUser(Long id, String username, String email, ERole role) {
+    private static User createUser(Long id, String username, String email) {
         return User.builder()
                 .id(id)
                 .username(username)
                 .email(email)
-                .roles(Set.of(Role.builder()
-                        .id(role == ERole.ADMIN ? 1L : 2L)
-                        .name(role.name())
-                        .build()))
                 .build();
     }
 
     /**
-     * Création d'un utilisateur avec le rôle user
+     * Création d'un utilisateur
      *
      * @return un objet utilisateur
      */
     public static User createUser() {
-        return createUser(2L, "toto", "toto@gmail.com", ERole.USER);
+        return createUser(2L, "toto", "toto@gmail.com");
     }
 
-    /**
-     * Création d'un utilisateur avec le rôle admin
-     *
-     * @return un objet utilisateur
-     */
-    public static User createAdminUser() {
-        return createUser(1L, "admin", "admin@gmail.com", ERole.ADMIN);
-    }
 
     /**
      * Création d'une tâche
@@ -218,29 +207,47 @@ public class TestDataFactory {
     /**
      * Création d'un objet FocusSessionDTO avec un statut par défaut (IN_PROGRESS)
      *
-     * @param id identifiant de la session
+     * @param id       identifiant de la session
+     * @param duration en minute
      * @return objet FocusSessionDTO
      */
-    public static FocusSessionDTO createFocusSessionDTO(Long id) {
-        return createFocusSessionDTO(id, EStatus.IN_PROGRESS);
+    public static FocusSessionDTO createFocusSessionDTO(Long id, Long duration) {
+        return createFocusSessionDTO(id, EStatus.IN_PROGRESS, duration);
     }
+
+    /**
+     * Création d'un objet FocusSessionDTO avec un statut par défaut (IN_PROGRESS)
+     *
+     * @param id       identifiant de la session
+     * @param duration en minute
+     * @param status   statut de la session
+     * @return objet FocusSessionDTO
+     */
+    public static FocusSessionDTO createFocusSessionDTO(Long id, Long duration, EStatus status) {
+        return createFocusSessionDTO(id, status, duration);
+    }
+
 
     /**
      * Création d'un objet FocusSessionDTO avec un statut personnalisé
      *
-     * @param id     identifiant de la session
-     * @param status statut de la session
+     * @param id       identifiant de la session
+     * @param status   statut de la session
+     * @param duration en minute
      * @return objet FocusSessionDTO
      */
-    public static FocusSessionDTO createFocusSessionDTO(Long id, EStatus status) {
+    public static FocusSessionDTO createFocusSessionDTO(Long id, EStatus status, Long duration) {
         User user = createUser();
+        ZonedDateTime sessionStart = ZonedDateTime.now();
+        ZonedDateTime sessionEnd = sessionStart.plusMinutes(duration);
         return FocusSessionDTO.builder()
                 .id(id)
                 .userId(user.getId())
                 .taskId(1L)
                 .status(status)
-                .sessionStart(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
+                .sessionStart(sessionStart)
+                .sessionEnd(sessionEnd)
+                .createdAt(ZonedDateTime.now())
                 .build();
     }
 

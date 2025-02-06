@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+
 class FocusSessionStatusValidatorTest {
 
     FocusSessionStatusValidator focusSessionStatusValidator;
@@ -18,31 +19,31 @@ class FocusSessionStatusValidatorTest {
     }
 
     @Test
-    public void shouldAllowTransitionStatusFromPendingToInProgess() {
+    void shouldAllowTransitionStatusFromPendingToInProgess() {
 
-        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L, 30L));
         existingSession.setStatus(EStatus.PENDING);
         Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EStatus.IN_PROGRESS, existingSession));
     }
 
     @Test
-    public void shouldAllowTransitionStatusFromInProgressToPending() {
+    void shouldAllowTransitionStatusFromInProgressToPending() {
 
-        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L, 30L));
         Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EStatus.PENDING, existingSession));
     }
 
     @Test
-    public void shouldAllowTransitionStatusFromInProgressToDone() {
+    void shouldAllowTransitionStatusFromInProgressToDone() {
 
-        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L, 30L));
         Assertions.assertDoesNotThrow(() -> focusSessionStatusValidator.validateStatusTransition(EStatus.DONE, existingSession));
     }
 
     @Test
-    public void shouldThrowExceptionIfTryingToChangeDoneStatusToAnyStatus() {
+    void shouldThrowExceptionIfTryingToChangeDoneStatusToAnyStatus() {
 
-        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
+        FocusSession existingSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L, 30L));
         existingSession.setStatus(EStatus.DONE);
         assertThrowAllSessionStatus(existingSession);
     }

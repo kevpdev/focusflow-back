@@ -23,7 +23,6 @@ public class TaskServiceImpl implements TaskService {
 
 
     private static final String TASK_NOT_FOUND_MESSAGE = "Task not found !";
-    private static final String TASK_ALREADY_COMPLETED = "Task is already completed";
     private final TaskRepository taskRepository;
 
     private final TaskMapper taskMapper;
@@ -72,6 +71,7 @@ public class TaskServiceImpl implements TaskService {
                 .map(taskMapper::mapTaskToTaskDTO);
     }
 
+    @Transactional
     @Override
     public TaskDTO updateTask(Long id, TaskDTO taskDTO) throws TaskNotFoundException {
 
@@ -87,8 +87,10 @@ public class TaskServiceImpl implements TaskService {
     }
 
     /**
-     * @param taskListToUpdate
-     * @return
+     * Update the status of all tasks in the list
+     *
+     * @param taskListToUpdate the list of tasks to update
+     * @return the list of updated tasks
      */
     @Transactional
     @Override

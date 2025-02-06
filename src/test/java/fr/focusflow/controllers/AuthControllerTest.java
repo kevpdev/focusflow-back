@@ -1,14 +1,11 @@
 package fr.focusflow.controllers;
 
 import fr.focusflow.TestDataFactory;
-import fr.focusflow.entities.ERole;
-import fr.focusflow.entities.Role;
 import fr.focusflow.entities.User;
 import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.security.SecurityConfig;
 import fr.focusflow.services.AuthenticatedUserService;
-import fr.focusflow.services.RoleService;
 import fr.focusflow.services.UserService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,11 +23,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
-
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -41,10 +37,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import(SecurityConfig.class)
 @WebMvcTest(AuthController.class)
+@TestPropertySource(properties = {
+        "jwt.token.expiration=900",
+        "jwt.refresh.token.expiration=604800"
+})
 class AuthControllerTest {
 
-    private final static String EMAIL_ALREADY_EXISTS_ERROR_MESSAGE = "Email already exists !";
-    private final static String ROLE_NOT_FOUND_ERROR_MESSAGE = "Role not found !";
+    private static final String EMAIL_ALREADY_EXISTS_ERROR_MESSAGE = "Email already exists !";
     private final Logger logger = LoggerFactory.getLogger(AuthControllerTest.class);
 
     private String email;
@@ -64,8 +63,6 @@ class AuthControllerTest {
     private CustomUserDetailsService customUserDetailsService;
     @MockBean
     private UserService userService;
-    @MockBean
-    private RoleService roleService;
     @MockBean
     private AuthenticatedUserService authenticatedUserService;
     @MockBean
@@ -87,7 +84,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldLoginAndReturnJwtCookie() throws Exception {
+    void shouldLoginAndReturnJwtCookie() throws Exception {
 
         logger.info("Debut shouldLoginAndReturnJwtCookie");
 
@@ -110,7 +107,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldFailLoginWithInvalidCredentials() throws Exception {
+    void shouldFailLoginWithInvalidCredentials() throws Exception {
 
         logger.info("Debut shouldFailLoginWithInvalidCredentials");
 
@@ -122,7 +119,7 @@ class AuthControllerTest {
                 .andReturn();
 
         String responsBody = mvcResult.getResponse().getContentAsString();
-        logger.info("Login unauthorized, received response : " + responsBody);
+        logger.info("Login unauthorized, received response : {}", responsBody);
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
 
@@ -134,12 +131,6 @@ class AuthControllerTest {
         when(userService.existByEmail(email)).thenReturn(status);
     }
 
-    private void mockDefaultRole() {
-        Role role = Role.builder()
-                .name(ERole.USER.name())
-                .build();
-        when(roleService.findByName(ERole.USER.name())).thenReturn(Optional.of(role));
-    }
 
     private ResultActions mockSignupRequest(String jsonRequest) throws Exception {
         return mockMvc.perform(post("/api/v1/auth/signup")
@@ -154,7 +145,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldThrowErrorWhenEmailAlreadyExists() throws Exception {
+    void shouldThrowErrorWhenEmailAlreadyExists() throws Exception {
 
         // Simuler qu'un utilisateur avec cet email existe déjà
         mockExistsEmail(true);
@@ -167,13 +158,10 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldRegisterUserWithDefaultRole() throws Exception {
+    void shouldRegisterUserWithDefaultRole() throws Exception {
 
         // Verification email n'existe pas
         mockExistsEmail(false);
-
-        // mock du role par defaut
-        mockDefaultRole();
 
         // mock appel REST Signup
         mockSignupRequest(jsonSignup)
@@ -181,13 +169,11 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldRegisterUserThenReturnJWT() throws Exception {
+    void shouldRegisterUserThenReturnJWT() throws Exception {
         // Verification email n'existe pas
 
         mockExistsEmail(false);
 
-        // mock du role par defaut
-        mockDefaultRole();
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
         when(jwtTokenProvider.generateRefreshToken(email)).thenReturn(refreshToken);
@@ -206,12 +192,9 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldRegisterUserWithHashedPassword() throws Exception {
+    void shouldRegisterUserWithHashedPassword() throws Exception {
         // Verification que l'email n'existe pas
         mockExistsEmail(false);
-
-        // mock du role par defaut
-        mockDefaultRole();
 
         when(jwtTokenProvider.generateToken(email)).thenReturn(token);
         when(jwtTokenProvider.generateRefreshToken(email)).thenReturn(refreshToken);
@@ -242,7 +225,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldThrowErrorWhenInvalidEmail() throws Exception {
+    void shouldThrowErrorWhenInvalidEmail() throws Exception {
 
         String invalidRequestParam = "{\"email\": \"invalid-email\", \"password\": \"" + password + "\",\"username\" : \"" + username + "\"}";
 
@@ -253,7 +236,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldThrowErrorWhenInvalidPassword() throws Exception {
+    void shouldThrowErrorWhenInvalidPassword() throws Exception {
 
         String invalidRequestParam = "{\"email\": \"" + email + "\", \"password\": \"\",\"username\" : \"" + username + "\"}";
 
@@ -264,7 +247,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void shouldThrowErrorWhenInvalidUsername() throws Exception {
+    void shouldThrowErrorWhenInvalidUsername() throws Exception {
 
         String invalidRequestParam = "{\"email\": \"" + email + "\", \"password\": \"" + password + "\",\"username\" : \"\"}";
 
@@ -275,7 +258,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void testIsAuthenticatedWithCookie() throws Exception {
+    void testIsAuthenticatedWithCookie() throws Exception {
 
         // initialisatio context spring pour le bean authentication
         TestDataFactory.setUpSecurityContext();
@@ -290,7 +273,7 @@ class AuthControllerTest {
     }
 
     @Test
-    public void testIsAuthenticatedWithBearer() throws Exception {
+    void testIsAuthenticatedWithBearer() throws Exception {
 
         // initialisatio context spring pour le bean authentication
         TestDataFactory.setUpSecurityContext();

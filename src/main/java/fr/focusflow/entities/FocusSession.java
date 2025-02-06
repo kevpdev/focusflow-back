@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 @Entity
 @Table(name = "focus_sessions", schema = "users")
@@ -25,10 +25,10 @@ public class FocusSession {
     private User user; // Référence à l'utilisateur
 
     @Column(name = "session_start", nullable = false)
-    private LocalDateTime sessionStart;
+    private ZonedDateTime sessionStart;
 
     @Column(name = "session_end")
-    private LocalDateTime sessionEnd; // Peut être null si en cours
+    private ZonedDateTime sessionEnd; // Peut être null si en cours
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -39,23 +39,23 @@ public class FocusSession {
     private Task task; // Tâche associée à cette session
 
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private ZonedDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private ZonedDateTime updatedAt;
 
     // Méthode appelée automatiquement avant l'insertion dans la base
     @PrePersist
     protected void onCreate() {
-        sessionStart = LocalDateTime.now();
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        sessionStart = ZonedDateTime.now();
+        createdAt = ZonedDateTime.now();
+        updatedAt = ZonedDateTime.now();
     }
 
     // Méthode appelée automatiquement avant chaque mise à jour
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = ZonedDateTime.now();
     }
 }
 

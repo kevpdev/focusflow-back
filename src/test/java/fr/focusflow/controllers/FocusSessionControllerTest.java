@@ -5,7 +5,6 @@ import fr.focusflow.TestUtil;
 import fr.focusflow.dtos.FocusSessionDTO;
 import fr.focusflow.dtos.FocusSessionRequestDTO;
 import fr.focusflow.entities.EStatus;
-import fr.focusflow.entities.FocusSession;
 import fr.focusflow.security.CustomUserDetailsService;
 import fr.focusflow.security.JwtTokenProvider;
 import fr.focusflow.security.SecurityConfig;
@@ -23,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -53,49 +53,40 @@ class FocusSessionControllerTest {
         TestDataFactory.setUpSecurityContext();
     }
 
-    @Test
-    public void shouldResumeSession() throws Exception {
-        shouldStartOrResumeSession(1L);
-    }
 
     @Test
-    public void shouldStartNewSession() throws Exception {
-        shouldStartOrResumeSession(null);
-    }
+    void shouldStartSession() throws Exception {
+        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(1L, 30L);
 
-    /**
-     * Test start new session if sessionId is null or resume existing session
-     *
-     * @param sessionId start new session if sessionId null
-     * @throws Exception
-     */
-    private void shouldStartOrResumeSession(Long sessionId) throws Exception {
-        FocusSession focusSession = TestDataFactory.createFocusSession(TestDataFactory.createFocusSessionDTO(1L));
-        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(sessionId);
-
-        when(focusSessionService.startOrResumeSession(focusSession.getTask().getId(), sessionId)).thenReturn(focusSessionDTO);
-
-
-        FocusSessionRequestDTO focusSessionRequestDTO = new FocusSessionRequestDTO(1L, sessionId);
+        //Request
+        FocusSessionRequestDTO focusSessionRequestDTO = FocusSessionRequestDTO.create(1L, 30L);
         String jsonContent = TestUtil.objectToJsonMapper(focusSessionRequestDTO);
 
-        mockMvc.perform(put("/api/v1/sessions/status/start")
+
+        // mocked service
+        when(focusSessionService.createFocusSession(focusSessionRequestDTO)).thenReturn(focusSessionDTO);
+
+        mockMvc.perform(post("/api/v1/sessions/create")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonContent)
                         .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(focusSessionDTO.id()))
+                .andExpect(jsonPath("$.taskId").value(focusSessionDTO.taskId()))
+                .andExpect(jsonPath("$.userId").value(focusSessionDTO.userId()))
+                .andExpect(jsonPath("$.sessionStart").isNotEmpty())
+                .andExpect(jsonPath("$.sessionEnd").isNotEmpty())
                 .andExpect(jsonPath("$.status").value(EStatus.IN_PROGRESS.name()));
 
-        verify(focusSessionService).startOrResumeSession(1L, sessionId);
+        verify(focusSessionService).createFocusSession(focusSessionRequestDTO);
     }
 
     @Test
-    public void shouldMarkSessionAsPending() throws Exception {
+    void shouldMarkSessionAsPending() throws Exception {
 
         Long sessionId = 1L;
-        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(sessionId, EStatus.PENDING);
+        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(sessionId, EStatus.PENDING, 30L);
 
         when(focusSessionService.markFocusSessionAsPending(sessionId)).thenReturn(focusSessionDTO);
 
@@ -111,10 +102,29 @@ class FocusSessionControllerTest {
     }
 
     @Test
-    public void shouldMarkSessionAsDone() throws Exception {
+    void shouldMarkSessionAsInProgress() throws Exception {
 
         Long sessionId = 1L;
-        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(sessionId, EStatus.DONE);
+        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(sessionId, 30L);
+
+        when(focusSessionService.markFocusSessionAsInProgress(sessionId)).thenReturn(focusSessionDTO);
+
+        mockMvc.perform(put("/api/v1/sessions/status/resume/{sessionId}", sessionId)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(sessionId))
+                .andExpect(jsonPath("$.status").value(EStatus.IN_PROGRESS.name()));
+
+        verify(focusSessionService).markFocusSessionAsInProgress(sessionId);
+    }
+
+    @Test
+    void shouldMarkSessionAsDone() throws Exception {
+
+        Long sessionId = 1L;
+        FocusSessionDTO focusSessionDTO = TestDataFactory.createFocusSessionDTO(sessionId, EStatus.DONE, 30L);
 
         when(focusSessionService.markFocusSessionAsDone(sessionId)).thenReturn(focusSessionDTO);
 
