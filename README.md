@@ -55,7 +55,8 @@ pour l'authentification, WebSocket pour le suivi en temps réel, et inclut une d
     jwt.expiration=3600000
     ```
 
-- **Swagger :** Accessible depuis `http://localhost:8080/swagger-ui.html`.
+- **Swagger :** Accessible depuis `http://localhost:8080/swagger-ui.html` ou
+  `https://focusflow-back.onrender.com/swagger-ui.html`.
 
 - **WebSocket Endpoint :** L'endpoint WebSocket principal est `ws://localhost:8080/wsocket`.
 
@@ -91,11 +92,17 @@ pour l'authentification, WebSocket pour le suivi en temps réel, et inclut une d
 - **PUT** `/api/v1/tasks/{id}` : Mise à jour d'une tâche.
 - **DELETE** `/api/v1/tasks/{id}` : Suppression d'une tâche.
 
-### Sessions de Focus
+## 📌 API Endpoints - Focus Sessions
 
-- **PUT** `/api/v1/sessions/status/start` : Démarrer ou reprendre une session de focus.
-- **PUT** `/api/v1/sessions/status/pending/{sessionId}` : Marquer une session en attente.
-- **PUT** `/api/v1/sessions/status/done/{sessionId}` : Marquer une session comme terminée.
+### **🔹 Modifier le statut d'une session**
+
+- **PUT** `/api/v1/sessions/status/resume/{sessionId}` : Marquer une session comme **en cours** (`IN_PROGRESS`).
+- **PUT** `/api/v1/sessions/status/pending/{sessionId}` : Marquer une session comme **en attente** (`PENDING`).
+- **PUT** `/api/v1/sessions/status/done/{sessionId}` : Marquer une session comme **terminée** (`DONE`).
+
+### **🔹 Création de session**
+
+- **POST** `/api/v1/sessions/create` : **Créer et démarrer** une nouvelle session de focus.
 
 ### WebSocket
 

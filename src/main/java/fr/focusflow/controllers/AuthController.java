@@ -1,12 +1,12 @@
 package fr.focusflow.controllers;
 
+import fr.focusflow.dtos.CookieDTO;
+import fr.focusflow.dtos.TokenDTO;
 import fr.focusflow.dtos.UserRequestDTO;
 import fr.focusflow.dtos.UserResponseDTO;
 import fr.focusflow.entities.User;
 import fr.focusflow.exceptions.EmailAlreadyExistsException;
-import fr.focusflow.exceptions.RoleNotFoundException;
 import fr.focusflow.security.JwtTokenProvider;
-import fr.focusflow.services.AuthenticatedUserService;
 import fr.focusflow.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,8 +29,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -40,11 +38,10 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final AuthenticatedUserService authenticatedUserService;
     private final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
-    @Value("${jwt.token.expiration}")
+    @Value("${jwt.token.expiration:900}")
     private String jwtTokenExpiration;
-    @Value("${jwt.refresh.token.expiration}")
+    @Value("${jwt.refresh.token.expiration:604800}")
     private String jwtRefreshTokenExpiration;
     @Value("${server.servlet.session.cookie.secure:true}")
     private boolean isSecure;
@@ -52,13 +49,11 @@ public class AuthController {
     private String sameSite;
 
     public AuthController(JwtTokenProvider jwtTokenProvider, AuthenticationManager authenticationManager,
-                          UserService userService, PasswordEncoder passwordEncoder,
-                          AuthenticatedUserService authenticatedUserService) {
+                          UserService userService, PasswordEncoder passwordEncoder) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.authenticationManager = authenticationManager;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
-        this.authenticatedUserService = authenticatedUserService;
     }
 
     @Operation(summary = "Log in to get a JWT token", description = "Authenticates user credentials and returns a JWT token if successful.")
@@ -74,22 +69,11 @@ public class AuthController {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String accessToken = jwtTokenProvider.generateToken(userRequestDTO.email());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(userRequestDTO.email());
+        TokenDTO tokenDTO = getTokenDTO(userRequestDTO);
 
-        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+        ResponseCookie csrfCookie = getCsrfCookie(request);
 
-        ResponseCookie csrfCookie = ResponseCookie.from("XSRF-TOKEN", csrfToken.getToken())
-                .path("/")
-                .httpOnly(false)
-                .secure(false)
-                .sameSite(sameSite)
-                .build();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.SET_COOKIE, getAccessToken(accessToken).toString());
-        headers.add(HttpHeaders.SET_COOKIE, getRefreshToken(refreshToken).toString());
-        headers.add(HttpHeaders.SET_COOKIE, csrfCookie.toString());
+        HttpHeaders headers = getHttpHeaders(getAccessToken(tokenDTO.accesToken()), getRefreshToken(tokenDTO.refreshToken()), csrfCookie);
 
         return ResponseEntity.ok()
                 .headers(headers)
@@ -118,9 +102,9 @@ public class AuthController {
                     .sameSite(sameSite)
                     .build();
 
-            List<String> roles = authenticatedUserService.getAuthenticatedUserRoles();
+            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                    .body(new UserResponseDTO("refresh token successful !", email));
 
-            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, accessCookie.toString()).body(new UserResponseDTO("refresh token successful !", email));
         } else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -144,35 +128,73 @@ public class AuthController {
     })
     @PostMapping("/signup")
     public ResponseEntity<UserResponseDTO> signup(@Valid @RequestBody UserRequestDTO userRequestDTO, HttpServletRequest request)
-            throws EmailAlreadyExistsException, RoleNotFoundException {
+            throws EmailAlreadyExistsException {
 
         if (userService.existByEmail(userRequestDTO.email())) {
             throw new EmailAlreadyExistsException(EMAIL_ALREADY_EXISTS_ERROR_MESSAGE);
         }
 
+        saveNewUser(userRequestDTO);
 
-        User newUser = new User();
-        newUser.setEmail(userRequestDTO.email());
-        newUser.setPassword(passwordEncoder.encode(userRequestDTO.password()));
-        newUser.setUsername(userRequestDTO.username());
+        TokenDTO tokenDTO = getTokenDTO(userRequestDTO);
 
-        userService.save(newUser);
+        CookieDTO cookieDTO = getCookieDTO(request, tokenDTO);
 
-        String accesToken = jwtTokenProvider.generateToken(userRequestDTO.email());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(userRequestDTO.email());
-
-        ResponseCookie accessCookie = getAccessToken(accesToken);
-        ResponseCookie refreshCookie = getRefreshToken(refreshToken);
-        ResponseCookie csrfCookie = getCsrfCookie(request);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.SET_COOKIE, accessCookie.toString());
-        headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-        headers.add(HttpHeaders.SET_COOKIE, csrfCookie.toString());
+        HttpHeaders headers = getHttpHeaders(cookieDTO.accessCookie(), cookieDTO.refreshCookie(), cookieDTO.csrfCookie());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .headers(headers)
                 .body(new UserResponseDTO("Sign up successful !", userRequestDTO.email()));
+    }
+
+    private void saveNewUser(UserRequestDTO userRequestDTO) {
+        User newUser = new User();
+        newUser.setEmail(userRequestDTO.email());
+        newUser.setPassword(passwordEncoder.encode(userRequestDTO.password()));
+        newUser.setUsername(userRequestDTO.username());
+        userService.save(newUser);
+    }
+
+    /**
+     * Get CookieDTO from request and tokenDTO
+     *
+     * @param request
+     * @param tokenDTO
+     * @return CookieDTO object with accessCookie, refreshCookie and csrfCookie
+     */
+    private CookieDTO getCookieDTO(HttpServletRequest request, TokenDTO tokenDTO) {
+        ResponseCookie accessCookie = getAccessToken(tokenDTO.accesToken());
+        ResponseCookie refreshCookie = getRefreshToken(tokenDTO.refreshToken());
+        ResponseCookie csrfCookie = getCsrfCookie(request);
+        return new CookieDTO(accessCookie, refreshCookie, csrfCookie);
+    }
+
+    /**
+     * Get HttpHeaders from accessCookie, refreshCookie and csrfCookie
+     *
+     * @param accessCookie  ResponseCookie object
+     * @param refreshCookie ResponseCookie object
+     * @param csrfCookie    ResponseCookie object
+     * @return HttpHeaders object
+     */
+    private HttpHeaders getHttpHeaders(ResponseCookie accessCookie, ResponseCookie refreshCookie, ResponseCookie csrfCookie) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        headers.add(HttpHeaders.SET_COOKIE, csrfCookie.toString());
+        return headers;
+    }
+
+    /**
+     * Get accesToken and refreshToken from userRequestDTO
+     *
+     * @param userRequestDTO UserRequestDTO object
+     * @return TokenDTO object with accesToken and refreshToken
+     */
+    private TokenDTO getTokenDTO(UserRequestDTO userRequestDTO) {
+        String accesToken = jwtTokenProvider.generateToken(userRequestDTO.email());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userRequestDTO.email());
+        return new TokenDTO(accesToken, refreshToken);
     }
 
     private ResponseCookie getCsrfCookie(HttpServletRequest request) {

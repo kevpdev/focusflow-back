@@ -15,7 +15,7 @@ CREATE TABLE admin.users (
 );
 
 CREATE TABLE users.focus_logs (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     session_id INTEGER,
     event_type VARCHAR(50) NOT NULL,
     event_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -33,7 +33,7 @@ CREATE TABLE users.focus_sessions (
 );
 
 CREATE TABLE users.notifications (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     user_id INTEGER,
     message TEXT NOT NULL,
     notification_type VARCHAR(50) NOT NULL,

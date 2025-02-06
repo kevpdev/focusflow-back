@@ -21,10 +21,10 @@ public class JwtTokenProvider {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Value("${jwt.token.expiration}")
+    @Value("${jwt.token.expiration:900}")
     private String jwtTokenExpiration;
 
-    @Value("${jwt.refresh.token.expiration}")
+    @Value("${jwt.refresh.token.expiration:604800}")
     private String jwtRefreshTokenExpiration;
 
     // Générer la clé de signature à partir de la clé encodée en Base64

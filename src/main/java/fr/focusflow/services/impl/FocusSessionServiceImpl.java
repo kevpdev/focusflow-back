@@ -60,7 +60,37 @@ public class FocusSessionServiceImpl implements FocusSessionService {
     @Override
     public FocusSessionDTO createFocusSession(FocusSessionRequestDTO focusSessionRequestDTO) throws TaskNotFoundException, FocusSessionRequestException {
 
+        validateFocusSessionRequest(focusSessionRequestDTO);
 
+        User user = authenticatedUserService.getAuthenticatedUser();
+
+        stopExistingFocusSessionByUserId(user.getId());
+
+        return startNewSession(focusSessionRequestDTO.taskId(), focusSessionRequestDTO.durationInMinutes(), user);
+    }
+
+    /**
+     * Stop existing FocusSession by userId
+     *
+     * @param userId userId
+     */
+    private void stopExistingFocusSessionByUserId(Long userId) {
+        // Check if existing session
+        Optional<FocusSession> optionalExistingSession = getActiveSessionByUserId(userId);
+
+        // stop existing session if exist
+        optionalExistingSession.ifPresent(existingSession -> {
+            existingSession.setStatus(EStatus.DONE);
+            existingSession.setSessionEnd(ZonedDateTime.now());
+            focusSessionRepository.save(existingSession);
+        });
+    }
+
+    /**
+     * @param focusSessionRequestDTO
+     * @throws FocusSessionRequestException
+     */
+    private void validateFocusSessionRequest(FocusSessionRequestDTO focusSessionRequestDTO) throws FocusSessionRequestException {
         // durationInMinutes must be greater than 0
         if (focusSessionRequestDTO.durationInMinutes() == null || focusSessionRequestDTO.durationInMinutes() <= 0 || focusSessionRequestDTO.durationInMinutes() > 90) {
             throw new FocusSessionRequestException("Duration must be not null and greater than 0 and less than 90 minutes");
@@ -70,20 +100,6 @@ public class FocusSessionServiceImpl implements FocusSessionService {
         if (focusSessionRequestDTO.taskId() == null) {
             throw new FocusSessionRequestException("Task id must be not null");
         }
-
-        User user = authenticatedUserService.getAuthenticatedUser();
-
-        // Check if existing session
-        Optional<FocusSession> optionalExistingSession = getActiveSessionByUserId(user.getId());
-
-        // stop existing session if exist
-        optionalExistingSession.ifPresent(existingSession -> {
-            existingSession.setStatus(EStatus.DONE);
-            existingSession.setSessionEnd(ZonedDateTime.now());
-            focusSessionRepository.save(existingSession);
-        });
-
-        return startNewSession(focusSessionRequestDTO.taskId(), focusSessionRequestDTO.durationInMinutes(), user);
     }
 
 
@@ -106,7 +122,6 @@ public class FocusSessionServiceImpl implements FocusSessionService {
      * @throws TaskNotFoundException
      */
     private FocusSessionDTO startNewSession(Long taskId, Long durationInMinutes, User user) throws TaskNotFoundException {
-        FocusSession focusSessionResponse;
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new TaskNotFoundException("Task not found !"));
@@ -118,15 +133,13 @@ public class FocusSessionServiceImpl implements FocusSessionService {
                 .status(EStatus.IN_PROGRESS)
                 .build();
 
-        focusSessionResponse = focusSessionRepository.save(newFocusSession);
-
-        return focusSessionMapper.mapFocusSessionToFocusDTO(focusSessionResponse);
+        return focusSessionMapper.mapFocusSessionToFocusDTO(focusSessionRepository.save(newFocusSession));
     }
 
     /**
      * Return session time info by session ID
      *
-     * @param sessionId
+     * @param sessionId ID of the session
      * @return SessionTimeInfoDTO object
      */
     @Override
